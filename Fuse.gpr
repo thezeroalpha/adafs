@@ -1,0 +1,7 @@
+Project Fuse is
+  for externally_built use "true";
+  for library_dir use "/usr/include/fuse3";
+  for library_name use "fuse3";
+  for source_dirs use ();
+  for library_kind use "dynamic";
+end Fuse;
