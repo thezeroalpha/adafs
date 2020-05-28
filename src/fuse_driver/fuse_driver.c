@@ -1,3 +1,4 @@
+
 /*
   FUSE: Filesystem in Userspace
   Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
@@ -173,7 +174,6 @@ int main(int argc, char *argv[])
 		args.argv[0][0] = '\0';
 	}
 
-    // TODO: up to here
 	ret = fuse_main(args.argc, args.argv, &hello_oper, NULL);
 	fuse_opt_free_args(&args);
 	return ret;

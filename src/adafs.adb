@@ -1,30 +1,18 @@
-with Interfaces.C; use Interfaces.C;
-with Interfaces.C.Strings; use Interfaces.C.Strings;
-with Ada.Text_IO; use Ada.Text_IO;
-procedure AdaFs
-is
-  my_argc : int := 2;
-  my_argv : chars_ptr_array := (New_String("dist/adafs"), New_String("/home/zeroalpha/adafs"));
-  type Fuse_Args_T is record
-    ArgC : int;
-    ArgV : chars_ptr_array (0..size_t(my_argc));
-    Allocated : int;
-  end record;
-  pragma Convention (C, Fuse_Args_T);
-
-  Args : Fuse_Args_T := (my_argc, my_argv, 0);
-
-  type Options_T is record
-    filename : chars_ptr;
-    contents : chars_ptr;
-    show_help : int;
-  end record;
-  pragma Convention (C, Options_T);
-
-  options : Options_T := (filename => New_String("hello"),
-                          contents => New_String("Hello World!\n"),
-                          show_help => 0);
-
-begin
-  Put_Line ("OK");
-end AdaFs;
+with proc;
+with filp;
+with inode;
+with System.Storage_Elements;
+package body AdaFS is
+  function Read (fd : Positive; buffer : System.Storage_Elements.Storage_Element; nbytes : Positive; pid : Positive) return Integer is
+    -- use pid to find fdtable
+    proc_entry : proc.fproc := proc.get_entry (pid);
+    -- use fd to index into found fdtable and find inode
+    filp_entry : filp.filp := filp.get_entry (proc_entry.filp_tab, fd);
+    f_inode : inode.inode := inode.get_entry (filp_entry.filp_ino);
+  begin
+    -- break up request to fit into blocks (1024 bytes each)
+    -- copy to appropriate place in user buffer
+    -- return number of bytes copied
+    return 42;
+  end Read;
+end AdaFS;
