@@ -28,17 +28,9 @@ package inode is
   type inode is record
     i_mode : types.mode_t;      -- file type, protection, etc.
     i_nlinks : nlink_t;   -- how many links to this file
-    i_uid : uid_t;        -- user id of the file's owner
-    i_gid : gid_t;        -- group number
     i_size : types.off_t;       -- current file size in bytes
-    i_atime : time_t;     -- time of last access (V2 only)
-    i_mtime : time_t;     -- when was file data last changed
-    i_ctime : time_t;     -- when was inode itself changed (V2 only)*/
     i_zone : zone_t;      -- zone numbers for direct, ind, and dbl ind
-
-    -- these are not present on the disk
     i_dev : dev_t;           -- which device is the inode on
-    i_num : ino_t;           -- inode number on its (minor) device
     i_count : Integer;       -- # times inode used; 0 means slot is free
     i_ndzones : Integer;     -- # direct zones (Vx_NR_DZONES)
     i_nindirs : Integer;     -- # indirect zones per indirect block

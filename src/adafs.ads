@@ -1,6 +1,9 @@
 with proc;
 with filp;
 with System.Storage_Elements;
+with types;
+with inode;
+with disk;
 package AdaFS is
-  function Read (fd : Positive; buffer : System.Storage_Elements.Storage_Element; nbytes : Positive; pid : Positive) return Integer;
+  function Read (fd : Positive; nbytes : Positive; pid : Positive) return types.buffer;
 end AdaFS;

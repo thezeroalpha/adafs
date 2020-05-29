@@ -5,5 +5,10 @@ package body filp is
   begin
     return filp_entry;
   end get_entry;
+
+  procedure update_pos (filp_entry_num : num; fd : Positive; pos : types.off_t) is
+  begin
+    tables(filp_entry_num)(fd).filp_pos := pos;
+  end update_pos;
 end filp;
 
