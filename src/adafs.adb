@@ -1,7 +1,7 @@
 with const;
 
 package body AdaFS is
-  function Read (fd : Positive; nbytes : Positive; pid : Positive) return types.buffer is
+  function Read (fd : Positive; nbytes : Positive; pid : Positive) return types.byte_buf is
     -- use pid to find fdtable
     proc_entry : proc.fproc := proc.get_entry (pid);
     -- use fd to index into found fdtable and find inode
@@ -10,7 +10,7 @@ package body AdaFS is
     position : types.off_t := filp_entry.filp_pos;
     f_size : types.off_t := f_inode.i_size;
 
-    data : types.buffer (1..nbytes);
+    data : types.byte_buf (1..nbytes);
     offset, chunk, bytes_left, buf_pos : types.off_t;
     num_bytes : Positive := nbytes;
   begin

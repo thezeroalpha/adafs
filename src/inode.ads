@@ -5,12 +5,10 @@ package inode is
   type uid_t is new Integer;
   type gid_t is new Character;
   type time_t is new Positive;
-  type dev_t is new Integer;
   type ino_t is new Positive;
   type zone1_t is new Positive;
 
   V2_NR_TZONES : Integer := 10;
-  type zone_t is array (1..V2_NR_TZONES) of Integer;
 
   type super_block is record
     s_ninodes : ino_t;            -- # usable inodes on the minor device
@@ -22,15 +20,16 @@ package inode is
     s_max_size : types.off_t;           -- maximum file size on this device
     s_magic : Integer;            -- magic number to recognize super-blocks
     s_pad : Integer;              -- try to avoid compiler-dependent padding
-    s_zones : zone_t;             -- number of zones (replaces s_nzones in V2)
+    s_zones : types.zone_t;             -- number of zones (replaces s_nzones in V2)
   end record;
 
+  type zone_arr_t is array (1..V2_NR_TZONES) of types.zone_t;
   type inode is record
     i_mode : types.mode_t;      -- file type, protection, etc.
     i_nlinks : nlink_t;   -- how many links to this file
     i_size : types.off_t;       -- current file size in bytes
-    i_zone : zone_t;      -- zone numbers for direct, ind, and dbl ind
-    i_dev : dev_t;           -- which device is the inode on
+    i_zone : zone_arr_t;      -- zone numbers for direct, ind, and dbl ind
+    i_dev : types.dev_t;           -- which device is the inode on
     i_count : Integer;       -- # times inode used; 0 means slot is free
     i_ndzones : Integer;     -- # direct zones (Vx_NR_DZONES)
     i_nindirs : Integer;     -- # indirect zones per indirect block
