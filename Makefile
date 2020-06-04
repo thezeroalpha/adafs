@@ -7,6 +7,10 @@ all: analyze
 	mkdir -p dist obj
 	gprbuild -d -P $(PROJFILE) -XFUSE_LIB="$(FUSE_LIB)"
 
+fs: all
+	dist/mkfs
+
+
 analyze:
 	@# (P)roject, (d)isplay progress, (f)orce recompilation, (c)ompile only
 	@# gnats: check syntax
