@@ -90,7 +90,7 @@ procedure mkfs is
 
   procedure write_bootblock is
     type bootblock_t is array (1..const.block_size/4) of String (1..4);
-    bootblock : bootblock_t := (others=>"BOOT");
+    bootblock : bootblock_t := (bootblock_t'Last-2 => "....", bootblock_t'Last-1 => "ENDS", bootblock_t'Last => "HERE", others=>"BOOT");
     procedure diskwrite_bootblock is new write_block (bootblock_t);
     pos : file_position;
   begin
