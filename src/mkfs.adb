@@ -110,7 +110,7 @@ procedure mkfs is
   end record;
   for superblock_t'Size use const.block_size;
 
-  procedure write_superblock is
+  procedure write_superblock (next_datazone, next_inode : out Natural) is
     n_total_zones : constant := 10; -- total zone numbers in inode
     type zone_array is array (1..n_total_zones) of Positive;
     type inode_on_disk is record
@@ -154,21 +154,51 @@ procedure mkfs is
     end bitmapsize;
     procedure diskwrite_superblock is new write_block (superblock_t);
     pos : file_position;
+
+    imap_blocks : Natural := bitmapsize(1+inodes);
+    zmap_blocks : Natural := bitmapsize(zones);
+
+    type imap_block_t is array (1..imap_blocks, 1..const.block_size) of Boolean;
+    procedure diskwrite_imap is new write_block (imap_block_t);
+    -- inode 1 not used but must be allocated
+    inode_map : imap_block_t := (1 => (1 => False, others => True), others => (others => True));
+
+    type zmap_block_t is array (1..zmap_blocks, 1..const.block_size) of Boolean;
+    procedure diskwrite_zmap is new write_block (zmap_block_t);
+    -- bit zero must always be allocated
+    zone_map : zmap_block_t := (1 => (1 => False, others => True), others => (others => True));
+    initblks : Natural;
   begin
     superblock.n_inodes := inodes;
     superblock.zones := zones;
-    superblock.imap_blocks := bitmapsize(1+inodes);
-    superblock.zmap_blocks := bitmapsize(zones);
-    superblock.first_data_zone := (superblock.imap_blocks+superblock.zmap_blocks+2) + ((inodes + inodes_per_block -1)/inodes_per_block);
+    superblock.imap_blocks := imap_blocks;
+    superblock.zmap_blocks := zmap_blocks;
+    initblks := (superblock.imap_blocks+superblock.zmap_blocks+2) + ((inodes + inodes_per_block -1)/inodes_per_block);
+    superblock.first_data_zone := initblks;
     superblock.log_zone_size := 0;
     superblock.magic := 16#2468#;
     superblock.max_size := n_direct_zones + indirects_size + (indirects_size * indirects_size);
     diskwrite_superblock (superblock_num, superblock, pos);
+
+    -- clear maps and inodes
+    for i in 3..initblks loop
+      zero_block (i);
+    end loop;
+    -- write maps
+    diskwrite_imap (3, inode_map, pos);
+    diskwrite_zmap (3+imap_blocks, zone_map, pos);
     tio.put_line(
       "Wrote superblock:"
       & superblock.n_inodes'Image & " inodes," & superblock.zones'Image & " zones"
       & ", max fsize" & superblock.max_size'Image & " bytes"
-      & ", first data zone at" & superblock.first_data_zone'Image);
+      & ", first data zone at" & superblock.first_data_zone'Image
+      & "," & initblks'Image & " init blks"
+      & ", inode map has" & Integer'(inode_map'Length(1)*inode_map'Length(2))'Image & " bits"
+      & ", zone map has" & Integer'(zone_map'Length(1)*zone_map'Length(2))'Image & " bits");
+
+    -- Set "return" values
+    next_datazone := superblock.first_data_zone;
+    next_inode := 2;
   end write_superblock;
 
   procedure print_pos is
@@ -177,6 +207,7 @@ procedure mkfs is
   end print_pos;
 
 
+  next_datazone, next_inode : Natural;
 begin
   sio.open(disk, sio.OUT_FILE, diskname);
   disk_acc := sio.stream(disk);
@@ -193,7 +224,7 @@ begin
   tio.Put_Line ("blocks:" & disk_size_blocks'Image);
   print_pos;
   write_bootblock;
-  write_superblock;
+  write_superblock (next_datazone, next_inode);
   -- write_bitmaps;
   -- write_inodes;
   sio.close(disk);
