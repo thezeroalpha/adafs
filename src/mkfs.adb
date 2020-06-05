@@ -2,6 +2,7 @@ with Ada.Text_IO;
 with Ada.Directories;
 with Ada.Streams.Stream_IO;
 with const;
+with bitmap;
 procedure mkfs is
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;
@@ -158,15 +159,8 @@ procedure mkfs is
     imap_blocks : Natural := bitmapsize(1+inodes);
     zmap_blocks : Natural := bitmapsize(zones);
 
-    type imap_block_t is array (1..imap_blocks, 1..const.block_size) of Boolean;
-    procedure diskwrite_imap is new write_block (imap_block_t);
-    -- inode 1 not used but must be allocated
-    inode_map : imap_block_t := (1 => (1 => False, others => True), others => (others => True));
-
-    type zmap_block_t is array (1..zmap_blocks, 1..const.block_size) of Boolean;
-    procedure diskwrite_zmap is new write_block (zmap_block_t);
-    -- bit zero must always be allocated
-    zone_map : zmap_block_t := (1 => (1 => False, others => True), others => (others => True));
+    package inode_bitmap is new bitmap (bitmap_blocks => imap_blocks, start_block => 2, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
+    package zone_bitmap is new bitmap (bitmap_blocks => zmap_blocks, start_block => 3, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
     initblks : Natural;
   begin
     superblock.n_inodes := inodes;
@@ -185,16 +179,16 @@ procedure mkfs is
       zero_block (i);
     end loop;
     -- write maps
-    diskwrite_imap (3, inode_map, pos);
-    diskwrite_zmap (3+imap_blocks, zone_map, pos);
+    inode_bitmap.init;
+    zone_bitmap.init;
     tio.put_line(
       "Wrote superblock:"
       & superblock.n_inodes'Image & " inodes," & superblock.zones'Image & " zones"
       & ", max fsize" & superblock.max_size'Image & " bytes"
       & ", first data zone at" & superblock.first_data_zone'Image
       & "," & initblks'Image & " init blks"
-      & ", inode map has" & Integer'(inode_map'Length(1)*inode_map'Length(2))'Image & " bits"
-      & ", zone map has" & Integer'(zone_map'Length(1)*zone_map'Length(2))'Image & " bits");
+      & ", zone map has" & zone_bitmap.size_bits'Image & " bits"
+      & ", inode map has" & inode_bitmap.size_bits'Image & " bits");
 
     -- Set "return" values
     next_datazone := superblock.first_data_zone;
@@ -225,7 +219,6 @@ begin
   print_pos;
   write_bootblock;
   write_superblock (next_datazone, next_inode);
-  -- write_bitmaps;
-  -- write_inodes;
+  -- install the root directory : allocate root inode, then rootdir function
   sio.close(disk);
 end mkfs;
