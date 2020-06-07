@@ -111,15 +111,25 @@ procedure mkfs is
   end record;
   for superblock_t'Size use const.block_size;
 
+  next_datazone, next_inode, nrinodes, inode_offset : Natural;
+
+  n_total_zones : constant := 10; -- total zone numbers in inode
+  zone_size : Positive := 1; -- zone shift is 0
+  zoff : Positive;
+  type zone_array is array (1..n_total_zones) of Positive;
+  type inode_on_disk is record
+    size : Natural; -- file size in bytes
+    zone : zone_array;
+    nlinks : Natural;
+  end record;
+  inode_size : Natural := inode_on_disk'Size;
+  inodes_per_block : Natural := const.block_size/inode_size;
+  imap_blocks : Natural;
+  zmap_blocks : Natural;
+  n_direct_zones : constant := 7;
+  n_indirects_in_block : constant := const.block_size/(Natural'Size/8);
+
   procedure write_superblock (next_datazone, next_inode : out Natural) is
-    n_total_zones : constant := 10; -- total zone numbers in inode
-    type zone_array is array (1..n_total_zones) of Positive;
-    type inode_on_disk is record
-      size : Natural; -- file size in bytes
-      zone : zone_array;
-    end record;
-    inode_size : Natural := inode_on_disk'Size;
-    inodes_per_block : Natural := const.block_size/inode_size;
     function calc_num_inodes (nblocks : block_num) return Natural is
       inode_max : constant := 65535;
       i : Natural := nblocks/3;
@@ -140,8 +150,6 @@ procedure mkfs is
 
     superblock : superblock_t;
     for superblock'Size use const.block_size;
-    indirects_size : constant := const.block_size/(Integer'Size/8);
-    n_direct_zones : constant := 7;
 
     function bitmapsize (nbits : Natural) return Natural is
       nblocks : Natural := 0;
@@ -156,22 +164,23 @@ procedure mkfs is
     procedure diskwrite_superblock is new write_block (superblock_t);
     pos : file_position;
 
-    imap_blocks : Natural := bitmapsize(1+inodes);
-    zmap_blocks : Natural := bitmapsize(zones);
-
-    package inode_bitmap is new bitmap (bitmap_blocks => imap_blocks, start_block => 2, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
-    package zone_bitmap is new bitmap (bitmap_blocks => zmap_blocks, start_block => 3, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
     initblks : Natural;
   begin
+    imap_blocks := bitmapsize(1+inodes);
+    zmap_blocks := bitmapsize(zones);
+
+    nrinodes := inodes;
     superblock.n_inodes := inodes;
     superblock.zones := zones;
     superblock.imap_blocks := imap_blocks;
     superblock.zmap_blocks := zmap_blocks;
+    inode_offset := superblock.imap_blocks + superblock.zmap_blocks+2;
     initblks := (superblock.imap_blocks+superblock.zmap_blocks+2) + ((inodes + inodes_per_block -1)/inodes_per_block);
     superblock.first_data_zone := initblks;
+    zoff := superblock.first_data_zone-1;
     superblock.log_zone_size := 0;
     superblock.magic := 16#2468#;
-    superblock.max_size := n_direct_zones + indirects_size + (indirects_size * indirects_size);
+    superblock.max_size := n_direct_zones + n_indirects_in_block + (n_indirects_in_block * n_indirects_in_block);
     diskwrite_superblock (superblock_num, superblock, pos);
 
     -- clear maps and inodes
@@ -179,29 +188,185 @@ procedure mkfs is
       zero_block (i);
     end loop;
     -- write maps
-    inode_bitmap.init;
-    zone_bitmap.init;
-    tio.put_line(
-      "Wrote superblock:"
-      & superblock.n_inodes'Image & " inodes," & superblock.zones'Image & " zones"
-      & ", max fsize" & superblock.max_size'Image & " bytes"
-      & ", first data zone at" & superblock.first_data_zone'Image
-      & "," & initblks'Image & " init blks"
-      & ", zone map has" & zone_bitmap.size_bits'Image & " bits"
-      & ", inode map has" & inode_bitmap.size_bits'Image & " bits");
+    declare
+      package inode_bitmap is new bitmap (bitmap_blocks => imap_blocks, start_block => 3, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
+      package zone_bitmap is new bitmap (bitmap_blocks => zmap_blocks, start_block => 4, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
+    begin
+      inode_bitmap.init;
+      zone_bitmap.init;
+      tio.put_line(
+        "Wrote superblock:"
+        & superblock.n_inodes'Image & " inodes," & superblock.zones'Image & " zones"
+        & ", max fsize" & superblock.max_size'Image & " bytes"
+        & ", first data zone at" & superblock.first_data_zone'Image
+        & "," & initblks'Image & " init blks"
+        & ", zone map has" & zone_bitmap.size_bits'Image & " bits"
+        & ", inode map has" & inode_bitmap.size_bits'Image & " bits");
+    end;
 
     -- Set "return" values
     next_datazone := superblock.first_data_zone;
     next_inode := 2;
   end write_superblock;
 
+  procedure create_rootdir is
+    function alloc_inode return Positive is
+      num : Positive := next_inode+1;
+      block_num : Positive := (num/inodes_per_block) + inode_offset;
+      offset : Natural := num mod inodes_per_block;
+      type inode_block_t is array (1..inodes_per_block) of inode_on_disk;
+      function read_inode_block is new read_block (inode_block_t);
+      procedure write_inode_block is new write_block (inode_block_t);
+      inode_block : inode_block_t;
+      pos : file_position;
+      package inode_bitmap is new bitmap (bitmap_blocks => imap_blocks, start_block => 3, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
+    begin
+      inode_block := read_inode_block (block_num, pos);
+      inode_block(offset).nlinks := 0;
+      write_inode_block (block_num, inode_block, pos);
+      inode_bitmap.set_bit(num-1, 1);
+      next_inode := next_inode+1;
+      return num;
+    end alloc_inode;
+
+    function alloc_zone return Positive is
+      z : Positive := next_datazone+1;
+      b : Positive := z;
+    begin
+      for i in 1..zone_size loop
+        zero_block(b+i);
+      end loop;
+      declare
+        package zone_bitmap is new bitmap (bitmap_blocks => zmap_blocks, start_block => 4, block_size_bytes => 1024, disk => disk'Access, disk_acc => disk_acc'Access);
+      begin
+        zone_bitmap.set_bit(z-zoff, 1);
+      end;
+      next_datazone := next_datazone+1;
+      return z;
+    end alloc_zone;
+
+    root_inum : Positive := alloc_inode;
+    zone_num : Positive := alloc_zone;
+
+    -- add zone z to inode n, the file has grown by 'grow_by_bytes' bytes
+    procedure add_zone (inode_num : Positive; zone_num : Positive; grow_by_bytes : Positive) is
+      block_num : Positive := (inode_num-1)/inodes_per_block + inode_offset + 1;
+      offset : Natural := (inode_num-1) mod inodes_per_block;
+      type inode_block_t is array (1..inodes_per_block) of inode_on_disk;
+      inode_block : inode_block_t;
+      function read_inode_block is new read_block (inode_block_t);
+      procedure write_inode_block is new write_block (inode_block_t);
+      type zone_block_t is array (1..n_indirects_in_block) of Natural;
+      zone_block : zone_block_t;
+      function read_zone_block is new read_block (zone_block_t);
+      procedure write_zone_block is new write_block (zone_block_t);
+      ino : inode_on_disk;
+      pos : file_position;
+      indir : Natural;
+    begin
+      inode_block := read_inode_block(block_num, pos);
+      ino := inode_block(offset+1);
+      ino.size := ino.size + grow_by_bytes;
+      for i in 1..n_direct_zones loop
+        if ino.zone(i) = 0 then
+          ino.zone(i) := zone_num;
+          inode_block(offset+1) := ino;
+          write_inode_block(block_num, inode_block, pos);
+          return;
+        end if;
+      end loop;
+      write_inode_block(block_num, inode_block, pos);
+
+      if ino.zone(n_direct_zones) = 0 then
+        ino.zone(n_direct_zones) := alloc_zone;
+      end if;
+      indir := ino.zone(n_direct_zones);
+      inode_block(offset) := ino;
+      write_inode_block(block_num, inode_block, pos);
+      block_num := indir; -- zone_shift is 0
+      zone_block := read_zone_block (block_num, pos);
+      for i in 1..n_indirects_in_block loop
+        if zone_block(i) = 0 then
+          zone_block(i) := zone_num;
+          write_zone_block(block_num, zone_block, pos);
+          return;
+        end if;
+      end loop;
+    end add_zone;
+
+    -- enter child in parent directory
+    procedure enter_dir (parent_inum : Positive; name : String; child_inum : Positive) is
+      block_num : Natural := ((parent_inum-1)/inodes_per_block)+inode_offset+1;
+      offset : Natural := (parent_inum-1) mod inodes_per_block;
+      pos : file_position;
+
+      type inode_block_t is array (1..inodes_per_block) of inode_on_disk;
+      function read_inode_block is new read_block (inode_block_t);
+      procedure write_inode_block is new write_block (inode_block_t);
+      inode_block : inode_block_t;
+
+
+      type direct is record
+        inode_num : Natural;
+        name: String(1..14); -- 14 == DIRSIZ
+      end record;
+      nr_dir_entries : Natural := const.block_size/direct'Size;
+      type dir_entry_block is array (1..nr_dir_entries) of direct;
+      function read_dir_entry_block is new read_block (dir_entry_block);
+      procedure write_dir_entry_block is new write_block (dir_entry_block);
+      dir_block : dir_entry_block;
+    begin
+      inode_block := read_inode_block (block_num, pos);
+
+      for i in 1..n_direct_zones loop
+        zone_num := inode_block(offset+1).zone(i);
+        if zone_num = 0 then
+          zone_num := alloc_zone;
+          inode_block(offset+1).zone(i) := zone_num;
+        end if;
+
+        for j in 1..zone_size loop
+          dir_block := read_dir_entry_block(zone_num+j, pos);
+          for k in 1..nr_dir_entries loop
+            if dir_block(k).inode_num = 0 then
+              dir_block(k).inode_num := child_inum;
+              dir_block(k).name := name & (1..14-name'Length => Character'Val(0));
+              write_dir_entry_block (zone_num+j, dir_block, pos);
+              write_inode_block (block_num, inode_block, pos);
+              return;
+            end if;
+          end loop;
+        end loop;
+      end loop;
+    end enter_dir;
+
+    procedure incr_link (inum : Positive) is
+      block_num : Positive := ((inum-1)/inodes_per_block)+inode_offset+1;
+      offset : Natural := (inum-1) mod inodes_per_block;
+      type inode_block_t is array (1..inodes_per_block) of inode_on_disk;
+      inode_block : inode_block_t;
+      procedure write_inode_block is new write_block (inode_block_t);
+      function read_inode_block is new read_block (inode_block_t);
+      pos : file_position;
+    begin
+      inode_block := read_inode_block(block_num, pos);
+      inode_block(offset+1).nlinks := inode_block(offset+1).nlinks+1;
+      write_inode_block(block_num, inode_block, pos);
+    end incr_link;
+
+  begin
+    add_zone(root_inum, zone_num, 32);
+    enter_dir(root_inum, ".", root_inum);
+    enter_dir(root_inum, "..", root_inum);
+    incr_link(root_inum);
+    incr_link(root_inum);
+  end create_rootdir;
+
   procedure print_pos is
   begin
     tio.put_line ("Current position: bit" & fpos'Image & " block" & diskpos'Image);
   end print_pos;
 
-
-  next_datazone, next_inode : Natural;
 begin
   sio.open(disk, sio.OUT_FILE, diskname);
   disk_acc := sio.stream(disk);
@@ -219,6 +384,6 @@ begin
   print_pos;
   write_bootblock;
   write_superblock (next_datazone, next_inode);
-  -- install the root directory : allocate root inode, then rootdir function
+  create_rootdir;
   sio.close(disk);
 end mkfs;

@@ -12,6 +12,7 @@ project AdaFS is
 
   package Compiler is
     for Default_Switches("C") use external_as_list ("FUSE_LIB", " ");
+    for Default_Switches("Ada") use ("-g");
   end Compiler;
   package Linker is
     -- call gprbuild with -XFUSE_LIB=`pkg-config fuse3 --cflags --libs`

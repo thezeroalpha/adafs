@@ -5,7 +5,7 @@ PROJFILE=AdaFS.gpr
 .PHONY: all clean run umount
 all: analyze
 	mkdir -p dist obj
-	gprbuild -d -P $(PROJFILE) -XFUSE_LIB="$(FUSE_LIB)"
+	gprbuild -g -d -P $(PROJFILE) -XFUSE_LIB="$(FUSE_LIB)"
 
 fs: all
 	dist/mkfs
