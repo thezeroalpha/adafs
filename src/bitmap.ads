@@ -21,5 +21,7 @@ package bitmap is
   procedure init;
   procedure set_bit (bit_num : bit_nums; value : one_bit);
   function get_bit (bit_num : bit_nums) return one_bit;
-  function size_bits return Natural is (bit_nums'Last);
+  function size_in_bits return Natural is (bit_nums'Last);
+  function size_in_blocks return Natural is (bitmap_blocks);
+  function get_start_block return Natural is (start_block);
 end bitmap;
