@@ -1,8 +1,4 @@
-with disk;
-with superblock;
-with bitmap;
-with const;
-with proc;
+with disk, superblock, bitmap, const, proc, filp;
 package adafs is
   package dsk is new disk ("disk.img");
   super : superblock.superblock_t;

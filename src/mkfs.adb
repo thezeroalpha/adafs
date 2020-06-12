@@ -1,12 +1,5 @@
-with Ada.Text_IO;
-with Ada.Streams.Stream_IO;
-with const;
-with bitmap;
-with disk;
-with boot;
-with util;
-with inode;
-with superblock;
+with Ada.Text_IO, Ada.Streams.Stream_IO;
+with const, bitmap, disk, boot, util, inode, superblock;
 procedure mkfs is
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;

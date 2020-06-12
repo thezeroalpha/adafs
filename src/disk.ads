@@ -1,8 +1,5 @@
-with Ada.Directories;
-with Ada.Streams.Stream_IO;
-with Ada.Text_IO;
-with const;
-with inode;
+with Ada.Directories, Ada.Streams.Stream_IO, Ada.Text_IO;
+with const, inode;
 generic
   filename : String;
 package disk is
