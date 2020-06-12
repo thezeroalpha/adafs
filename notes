@@ -1,1 +1,0 @@
-Issues with implementing bitmap. Lowest ada can go is 1 byte with built-in types, even with packing. So to actually do bitmap with bits, had to do a lot of messing around with types and numbers. There isn't even a bit shift operator.

@@ -47,6 +47,13 @@ package body adafs is
   begin
     tio.put_line("Free fd:" & fd'Image);
     tio.put_line("Free filp slot:" & filp_slot_num'Image);
+
+    -- TODO: scan the path name and get the inode
+    --  inode rip := eat_path
+    filp.tab(filp_slot_num).count := 1;
+    --  filp.tab(filp_slot_num).ino := rip;
+    procentry.open_filps(fd) := filp_slot_num;
+    proc.put_entry(pid, procentry);
     return placeholder;
   end open;
 end adafs;

@@ -24,4 +24,5 @@ package proc is
       open_filps => (others => filp.null_fd)));
 
   function get_entry (pid : tab_range) return entry_t is (tab(pid));
+  procedure put_entry (pid : tab_range; procentry : entry_t);
 end proc;

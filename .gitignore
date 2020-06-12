@@ -1,3 +1,4 @@
 obj
 .DS_Store
 .gdb_history
+private/
