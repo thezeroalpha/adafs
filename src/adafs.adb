@@ -38,5 +38,16 @@ package body adafs is
       end;
     end if;
   end init;
+
+  function open (path : String; pid : proc.tab_range) return fd_t is
+    procentry : proc.entry_t := proc.get_entry (pid); -- fproc entry for the specific process
+    --  filp_tab_num : filp.num := procentry.filp_tab_num; -- num of table of file descriptors for that process
+    placeholder : constant := 7;
+  begin
+    tio.put_line ("Filp tab number" & procentry.filp_tab_num'Image);
+    --  tio.put_line("Free fd:" & filp.get_free_fd(filp_tab_num)'Image);
+
+    return placeholder;
+  end open;
 end adafs;
 
