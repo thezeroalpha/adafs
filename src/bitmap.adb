@@ -38,7 +38,7 @@ package body bitmap is
     if not is_reading then
       sio.set_mode(disk.all, sio.in_file);
     end if;
-    sio.set_index(disk.all, sio.count(((start_block-1)*1024+1)+byte_location));
+    sio.set_index(disk.all, sio.count(((start_block-1)*1024)+byte_location));
     bitmap_byte_t'read(disk_acc.all, the_byte);
     shifted_byte := Natural(the_byte/(2**bit_offset));
     return one_bit(shifted_byte mod 2) and one_bit(2#1#);

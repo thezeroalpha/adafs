@@ -4,10 +4,11 @@ project AdaFS is
   for Languages use ("Ada", "C");
   for Object_Dir use "obj/";
   for Exec_Dir use "dist/";
-  for Main use ("mkfs.adb");
+  for Main use ("mkfs.adb", "main.adb");
 
   package Builder is
     for Executable ("mkfs.adb") use "mkfs";
+    for Executable ("main.adb") use "adafs";
   end Builder;
 
   package Compiler is
