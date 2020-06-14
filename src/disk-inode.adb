@@ -1,4 +1,8 @@
 package body disk.inode is
+  procedure set_super (sp : superblock.superblock_t) is
+  begin
+    super := sp;
+  end set_super;
 
   function get_inode (num : Natural) return in_mem is
     offset : Natural := 3+super.imap_blocks+super.zmap_blocks;
@@ -91,6 +95,7 @@ package body disk.inode is
       for dp in dir_entry_blk'Range loop
         if dir_entry_blk(dp).inode_num /= 0 and dir_entry_blk(dp).name = name then
           -- match
+          tio.put_line("advance(): for last part '" & name & "' (in inode" & inum'Image & "), found dir entry block" & bnum'Image & " entry #" & dp'Image & " -> inode" & dir_entry_blk(dp).inode_num'Image);
           return dir_entry_blk(dp).inode_num;
         end if;
       end loop;
@@ -123,15 +128,15 @@ package body disk.inode is
       end if;
       startpos := cursor;
       endpos := cursor;
-      while endpos+1 /= path'Last and path(endpos+1) /= '/' loop
+      while endpos+1 /= path'Last and path(endpos+1) /= Character'Val(0) and path(endpos+1) /= '/' loop
         if path(endpos+1) /= '/' then
           endpos := endpos+1;
         end if;
       end loop;
-      if endpos+1 = path'Last and path(endpos+1) /= '/' then
+      if endpos+1 = path'Last and path(endpos+1) /= '/' and path(endpos+1) /= Character'Val(0) then
         endpos := endpos+1;
       end if;
-      cursor := (if endpos = path'Last then endpos else endpos+1);
+      cursor := (if (endpos = path'Last or path(endpos) = Character'Val(0)) then endpos else endpos+1);
       return path(startpos..endpos);
     end parse_next;
 
@@ -175,6 +180,7 @@ package body disk.inode is
       return ldir_inum;
     end if;
     ldir_inum := advance(ldir_inum, final_compt);
+    tio.put_line(path & ": inode" & ldir_inum'Image);
     return ldir_inum;
   end path_to_inum;
 end disk.inode;

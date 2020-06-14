@@ -4,8 +4,9 @@ with superblock;
 with inode_types; use inode_types;
 with proc;
 generic
-  super : superblock.superblock_t;
+  super : in out superblock.superblock_t;
 package disk.inode is
+  procedure set_super (sp : superblock.superblock_t);
   zone_size : Positive := 1; -- zone shift is 0
   n_direct_zones : constant := 7;
   n_indirects_in_block : constant := const.block_size/(Natural'Size/8); -- actually 'num zones per indirect block'

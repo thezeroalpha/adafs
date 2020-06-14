@@ -14,6 +14,7 @@ package body adafs is
           tio.put_line("Magic number mismatch, disk likely not in MINIX format."); -- should do something more meaningful than this
           return;
         end if;
+        inode.set_super(super);
       end;
       declare
         package imap is new bitmap (
@@ -28,13 +29,15 @@ package body adafs is
           block_size_bytes => const.block_size,
           disk => dsk.disk'Access,
           disk_acc => dsk.disk_acc'Access);
+          t : Character := Character'Val(9);
       begin
-        tio.put_line("imap size" & imap.size_in_blocks'Image);
-        tio.put_line("first bit should be 1 (allocated), is" & imap.get_bit(1)'Image);
-        tio.put_line("second bit should be 1 (allocated), is" & imap.get_bit(2)'Image);
-        tio.put_line("zmap size" & zmap.size_in_blocks'Image);
-        tio.put_line("first bit should be 1 (allocated), is" & zmap.get_bit(1)'Image);
-        tio.put_line("second bit should be 1 (allocated), is" & zmap.get_bit(2)'Image);
+        tio.put_line("sanity checks:");
+        tio.put_line(t & "imap size" & imap.size_in_blocks'Image);
+        tio.put_line(t & "first bit should be 1 (allocated), is" & imap.get_bit(1)'Image);
+        tio.put_line(t & "second bit should be 0 (free), is" & imap.get_bit(2)'Image);
+        tio.put_line(t & "zmap size" & zmap.size_in_blocks'Image);
+        tio.put_line(t & "first bit should be 1 (allocated), is" & zmap.get_bit(1)'Image);
+        tio.put_line(t & "second bit should be 0 (free), is" & zmap.get_bit(2)'Image);
       end;
     end if;
   end init;
@@ -43,8 +46,15 @@ package body adafs is
     procentry : proc.entry_t := proc.get_entry (pid); -- fproc entry for the specific process
     fd : filp.fd_t := filp.get_free_fd (procentry.open_filps);
     filp_slot_num : filp.tab_num_t := filp.get_free_filp;
-    inum : Natural := inode.path_to_inum (path & (1..inode.path_t'Last-path'Length => Character'Val(0)), procentry);
+    inum : Natural;
   begin
+    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " opens " & path & " ==");
+    inum := inode.path_to_inum (path & (1..inode.path_t'Last-path'Length => Character'Val(0)), procentry);
+    if inum = 0 then
+      tio.put_line ("couldn't open " & path);
+      return filp.null_fd;
+    end if;
+
     tio.put_line("Free fd:" & fd'Image);
     tio.put_line("Free filp slot:" & filp_slot_num'Image);
 
