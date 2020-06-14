@@ -1,5 +1,6 @@
 with Ada.Directories, Ada.Streams.Stream_IO, Ada.Text_IO;
-with const, inode;
+with const;
+with inode_types;
 generic
   filename : String;
 package disk is
@@ -17,7 +18,7 @@ package disk is
   no_block : constant block_num := 0;
   subtype disk_position is Integer range 1..size_blocks;
 
-  n_inodes : Natural := inode.calc_num_inodes_for_blocks (size_blocks);
+  n_inodes : Natural := inode_types.calc_num_inodes_for_blocks (size_blocks);
   n_zones : Natural := size_blocks;
 
   function init return Boolean;

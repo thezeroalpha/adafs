@@ -1,9 +1,13 @@
 with Ada.Text_IO, Ada.Streams.Stream_IO;
-with const, bitmap, disk, boot, util, inode, superblock;
+with const, bitmap, disk, boot, util, superblock;
+with disk.inode;
+with inode_types;
 procedure mkfs is
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;
   package dsk is new disk ("disk.img");
+  super : superblock.superblock_t;
+  for super'Size use const.block_size;
 
   -- we are using lots of custom sizes to lay out the fs, disable this warning
   pragma Warnings (Off, "*bits of*unused");
@@ -46,27 +50,28 @@ procedure mkfs is
   end write_bootblock;
 
   procedure write_superblock (next_datazone, next_inode, zoff, inode_offset : out Natural) is
-    super : superblock.superblock_t;
-    for super'Size use const.block_size;
     procedure diskwrite_superblock is new dsk.write_block (superblock.superblock_t);
     n_initblks : Natural;
   begin
     -- Set "global" values
     inode_offset := inode_bitmap.size_in_blocks + zone_bitmap.size_in_blocks + 2;
-    n_initblks := (inode_offset) + ((dsk.n_inodes + inode.num_per_block - 1)/inode.num_per_block);
+    n_initblks := (inode_offset) + ((dsk.n_inodes + inode_types.num_per_block - 1)/inode_types.num_per_block);
     zoff := n_initblks-1;
     next_datazone := n_initblks;
     next_inode := 2;
 
-    super := (
-      n_inodes => dsk.n_inodes,
-      zones => dsk.n_zones,
-      imap_blocks => inode_bitmap.size_in_blocks,
-      zmap_blocks => zone_bitmap.size_in_blocks,
-      first_data_zone => n_initblks,
-      log_zone_size => 0,
-      magic => 16#2468#,
-      max_size => inode.max_file_size);
+    super.n_inodes := dsk.n_inodes;
+    super.zones := dsk.n_zones;
+    super.imap_blocks := inode_bitmap.size_in_blocks;
+    super.zmap_blocks := zone_bitmap.size_in_blocks;
+    super.first_data_zone := n_initblks;
+    super.log_zone_size := 0;
+    super.magic := 16#2468#;
+    declare
+      package inode is new dsk.inode (super);
+    begin
+      super.max_size := inode.max_file_size;
+    end;
 
     diskwrite_superblock (dsk.superblock_num, super);
 
@@ -89,13 +94,14 @@ procedure mkfs is
   end write_superblock;
 
   procedure create_rootdir (next_datazone, next_inode : in out Natural; zoff, inode_offset : in Natural) is
+    package inode is new dsk.inode (super);
     function read_inode_block is new dsk.read_block (inode.inode_block_t);
     procedure write_inode_block is new dsk.write_block (inode.inode_block_t);
 
     function alloc_inode return Positive is
       num : Positive := next_inode+1;
-      block_num : Positive := (num/inode.num_per_block) + inode_offset;
-      offset : Natural := num mod inode.num_per_block;
+      block_num : Positive := (num/inode_types.num_per_block) + inode_offset;
+      offset : Natural := num mod inode_types.num_per_block;
       inode_block : inode.inode_block_t;
     begin
       inode_block := read_inode_block (block_num);
@@ -123,13 +129,13 @@ procedure mkfs is
 
     -- add zone z to inode n, the file has grown by 'grow_by_bytes' bytes
     procedure add_zone (inode_num : Positive; zone_num : Positive; grow_by_bytes : Positive) is
-      block_num : Positive := (inode_num-1)/inode.num_per_block + inode_offset + 1;
-      offset : Natural := (inode_num-1) mod inode.num_per_block;
+      block_num : Positive := (inode_num-1)/inode_types.num_per_block + inode_offset + 1;
+      offset : Natural := (inode_num-1) mod inode_types.num_per_block;
       inode_block : inode.inode_block_t;
       zone_block : inode.zone_block_t;
       function read_zone_block is new dsk.read_block (inode.zone_block_t);
       procedure write_zone_block is new dsk.write_block (inode.zone_block_t);
-      ino : inode.on_disk;
+      ino : inode_types.on_disk;
       indir : Natural;
     begin
       inode_block := read_inode_block(block_num);
@@ -164,13 +170,13 @@ procedure mkfs is
 
     -- enter child in parent directory
     procedure enter_dir (parent_inum : Positive; name : String; child_inum : Positive) is
-      block_num : Natural := ((parent_inum-1)/inode.num_per_block)+inode_offset+1;
-      offset : Natural := (parent_inum-1) mod inode.num_per_block;
+      block_num : Natural := ((parent_inum-1)/inode_types.num_per_block)+inode_offset+1;
+      offset : Natural := (parent_inum-1) mod inode_types.num_per_block;
       inode_block : inode.inode_block_t;
 
-      function read_dir_entry_block is new dsk.read_block (inode.dir_entry_block);
-      procedure write_dir_entry_block is new dsk.write_block (inode.dir_entry_block);
-      dir_block : inode.dir_entry_block;
+      function read_dir_entry_block is new dsk.read_block (inode.dir_entry_block_t);
+      procedure write_dir_entry_block is new dsk.write_block (inode.dir_entry_block_t);
+      dir_block : inode.dir_entry_block_t;
     begin
       inode_block := read_inode_block (block_num);
 
@@ -197,8 +203,8 @@ procedure mkfs is
     end enter_dir;
 
     procedure incr_link (inum : Positive) is
-      block_num : Positive := ((inum-1)/inode.num_per_block)+inode_offset+1;
-      offset : Natural := (inum-1) mod inode.num_per_block;
+      block_num : Positive := ((inum-1)/inode_types.num_per_block)+inode_offset+1;
+      offset : Natural := (inum-1) mod inode_types.num_per_block;
       inode_block : inode.inode_block_t;
     begin
       inode_block := read_inode_block(block_num);

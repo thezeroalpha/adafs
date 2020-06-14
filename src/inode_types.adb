@@ -1,4 +1,4 @@
-package body inode is
+package body inode_types is
   function calc_num_inodes_for_blocks (nblocks : Natural) return Natural is
     inode_max : constant := 65535;
     i : Natural := nblocks/3;
@@ -13,4 +13,4 @@ package body inode is
     i := (if i > inode_max then inode_max else i);
     return i;
   end calc_num_inodes_for_blocks;
-end inode;
+end inode_types;

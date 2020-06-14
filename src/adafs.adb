@@ -43,18 +43,16 @@ package body adafs is
     procentry : proc.entry_t := proc.get_entry (pid); -- fproc entry for the specific process
     fd : filp.fd_t := filp.get_free_fd (procentry.open_filps);
     filp_slot_num : filp.tab_num_t := filp.get_free_filp;
-    placeholder : constant := 7;
+    inum : Natural := inode.path_to_inum (path & (1..inode.path_t'Last-path'Length => Character'Val(0)), procentry);
   begin
     tio.put_line("Free fd:" & fd'Image);
     tio.put_line("Free filp slot:" & filp_slot_num'Image);
 
-    -- TODO: scan the path name and get the inode
-    --  inode rip := eat_path
     filp.tab(filp_slot_num).count := 1;
-    --  filp.tab(filp_slot_num).ino := rip;
+    filp.tab(filp_slot_num).ino := inum;
     procentry.open_filps(fd) := filp_slot_num;
     proc.put_entry(pid, procentry);
-    return placeholder;
+    return fd;
   end open;
 end adafs;
 
