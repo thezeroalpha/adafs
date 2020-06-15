@@ -24,6 +24,23 @@ package body disk.inode is
     return ino;
   end get_inode;
 
+  procedure put_inode (ino : in_mem) is
+    offset : Natural := 3+super.imap_blocks+super.zmap_blocks;
+    bnum : block_num := ((ino.num-1)/num_per_block)+offset;
+    function disk_read_iblock is new read_block(inode_block_t);
+    procedure disk_write_iblock is new write_block(inode_block_t);
+    iblock : inode_block_t := disk_read_iblock(bnum);
+    pos_in_block : Natural range 1..num_per_block := ((ino.num-1) mod num_per_block)+1;
+
+    ino_to_write : on_disk := (
+      size => ino.size,
+      zone => ino.zone,
+      nlinks => ino.nlinks);
+  begin
+    iblock(pos_in_block) := ino_to_write;
+    disk_write_iblock(bnum, iblock);
+  end put_inode;
+
   function inode_fpos_to_bnum (ino : in_mem; fpos : Natural) return Natural is
     --analogous to minix read.c:read_map
     scale : Natural := super.log_zone_size; -- for block-zone conversion
@@ -183,4 +200,314 @@ package body disk.inode is
     tio.put_line(path & ": inode" & ldir_inum'Image);
     return ldir_inum;
   end path_to_inum;
+
+  procedure wipe_inode (ino : in out in_mem) is
+  begin
+    ino.size := 0;
+    for i in 1..n_total_zones loop
+      ino.zone(i) := 0;
+    end loop;
+  end wipe_inode;
+
+  function alloc_inode return Natural is
+    package imap is new bitmap (
+      bitmap_blocks => super.imap_blocks,
+      start_block => const.imap_start,
+      block_size_bytes => const.block_size,
+      disk => disk'Access,
+      disk_acc => disk_acc'Access);
+    imap_bit_num : imap.bit_nums := imap.alloc_bit(1); -- ideally, store search start in superblock and don't search whole bitmap (s_isearch)
+    ino : in_mem;
+  begin
+    if imap_bit_num = 0 then
+      return 0; -- no free inodes
+    end if;
+    -- set superblock i_search to b
+    ino := get_inode(imap_bit_num);
+    wipe_inode(ino);
+    ino.nlinks := 0;
+    ino.n_dzones := n_direct_zones;
+    ino.n_indirs := n_indirects_in_block;
+    put_inode(ino);
+    return imap_bit_num;
+  end alloc_inode;
+
+  function alloc_zone (nearby_zone : Natural) return Natural is
+    package imap is new bitmap (
+      bitmap_blocks => super.imap_blocks,
+      start_block => const.imap_start,
+      block_size_bytes => const.block_size,
+      disk => disk'Access,
+      disk_acc => disk_acc'Access);
+
+    package zmap is new bitmap (
+      bitmap_blocks => super.zmap_blocks,
+      start_block => imap.get_start_block+imap.size_in_blocks,
+      block_size_bytes => const.block_size,
+      disk => disk'Access,
+      disk_acc => disk_acc'Access);
+
+    b,bit : Natural;
+  begin
+    if nearby_zone = super.first_data_zone then
+      bit := 1; -- should actually be s_zsearch for better efficiency
+    else
+      bit := nearby_zone-(super.first_data_zone); -- FIXME -1 or not?
+    end if;
+    b := zmap.alloc_bit(bit);
+    if b = 0 then
+      return 0; -- no space on device
+    end if;
+    -- save zsearch in superblock
+    return super.first_data_zone + b; -- FIXME -1 or not?
+  end alloc_zone;
+
+  -- write a new zone into an inode
+  procedure write_map (ino : in out in_mem; pos : Natural; new_zone : Natural) is
+    scale : Natural := super.log_zone_size; -- for zone-block conversion
+    zone : Natural := util.bshift_r(((pos+1)/const.block_size)-1, scale); -- relative zone num to insert
+    zones : Natural := ino.n_dzones;
+    nr_indirects : Natural := ino.n_indirs;
+    bnum, excess, ind_ex, z, z1 : Natural;
+    single, new_dbl, new_ind : Boolean;
+  begin
+    if zone < zones then -- position is in the inode itself
+      ino.zone(zone) := new_zone;
+      put_inode(ino);
+      return;
+    end if;
+    -- position is not in inode
+    excess := zone - zones;
+    if excess < nr_indirects then -- position can be found via single indirect block
+      z1 := ino.zone(zones);
+      single := True;
+    else -- position can be found via double indirect block
+      z := ino.zone(zones+1);
+      if z = 0 then -- have to create double indirect block
+        z := alloc_zone(ino.zone(1));
+        if z = 0 then
+          return;
+        end if;
+        ino.zone(zones+1) := z;
+        new_dbl := True;
+      end if;
+      -- z is now zone num for double indir block
+      excess := excess - nr_indirects;  -- single indir doesn't count
+      ind_ex := excess/nr_indirects;
+      excess := excess mod nr_indirects;
+      if ind_ex >= nr_indirects then
+        return; -- too big
+      end if;
+      bnum := util.bshift_l(z, scale);
+      if new_dbl then
+        zero_block(bnum);
+      end if;
+      declare
+        function read_zone_block is new read_block(zone_block_t);
+        indir_block : zone_block_t := read_zone_block(bnum);
+      begin
+        z1 := indir_block(ind_ex);
+      end;
+      single := False;
+    end if;
+
+    -- z1 is now single indir zone, excess is index
+    if z1 = 0 then
+      -- create indirect block, store zone num in inode or dbl indir block
+      z1 := alloc_zone (ino.zone(1));
+      if single then
+        ino.zone(zones) := z1;
+      else
+        declare
+          function read_zone_block is new read_block(zone_block_t);
+          indir_block : zone_block_t := read_zone_block(bnum);
+          procedure write_zone_block is new write_block(zone_block_t);
+        begin
+          indir_block(ind_ex) := z1;
+          write_zone_block(bnum, indir_block);
+        end;
+      end if;
+      new_ind := True;
+      if z1 = 0 then
+        return; -- couldn't create single indirect
+      end if;
+    end if;
+
+    -- z1 is indirect block's zone num
+    bnum := util.bshift_l(z1, scale);
+    if new_ind then
+      zero_block(bnum);
+    end if;
+    declare
+      function read_zone_block is new read_block(zone_block_t);
+      indir_block : zone_block_t := read_zone_block(bnum);
+      procedure write_zone_block is new write_block(zone_block_t);
+    begin
+      indir_block(excess) := new_zone;
+      write_zone_block(bnum, indir_block);
+    end;
+
+    put_inode(ino);
+  end write_map;
+
+  -- zero a zone. 'pos' gives byte in first block to be zeroed
+  procedure clear_zone (ino : in_mem; pos : Natural) is
+    scale : Natural := super.log_zone_size;
+    position,next,blo,bhi : Natural;
+  begin
+    if scale = 0 then -- block size and zone size are equal, not needed
+      return;
+    end if;
+
+    zone_size := util.bshift_l(const.block_size, scale);
+    position := (pos/zone_size) * zone_size;
+    next := position + const.block_size;
+    if next/zone_size /= position/zone_size then -- pos in last block of a zone, don't clear
+      return;
+    end if;
+    blo := inode_fpos_to_bnum(ino, next);
+    if blo = 0 then
+      return;
+    end if;
+    bhi := util.bshift_l(util.bshift_r(blo, scale)+1, scale)-1;
+
+    -- clear blocks between blo and bhi
+    for i in blo..bhi loop
+      zero_block(i);
+    end loop;
+  end clear_zone;
+
+  function new_block (ino : in_mem; pos : Natural) return Natural is
+    block_num : Natural := inode_fpos_to_bnum(ino, pos);
+    base_block, zone_size : Natural;
+    z : Natural;
+    the_inode : in_mem := ino;
+  begin
+    if block_num /= no_block then
+      zero_block(block_num);
+      return block_num;
+    else
+      if the_inode.zone(1) = 0 then
+        z := super.first_data_zone;
+      else
+        z := the_inode.zone(1);
+      end if;
+      z := alloc_zone(z);
+      if z = 0 then
+        return 0;
+      end if;
+      write_map(the_inode, pos, z);
+      if pos /= the_inode.size then
+        clear_zone(the_inode, pos);
+      end if;
+
+      base_block := util.bshift_l(z, super.log_zone_size);
+      zone_size := util.bshift_l(const.block_size, super.log_zone_size);
+      block_num := base_block + ((pos mod zone_size)/const.block_size);
+      zero_block(block_num);
+      return block_num;
+   end if;
+  end new_block;
+
+  procedure add_entry (dir_num : Natural; str : name_t; inum : Natural) is
+    dir_ino : in_mem := get_inode(dir_num);
+    pos : Natural := 1;
+    bnum : Natural;
+    function disk_read_dir_entry_block is new read_block(dir_entry_block_t);
+    procedure disk_write_dir_entry_block is new write_block(dir_entry_block_t);
+    dir_entry_blk : dir_entry_block_t;
+
+    hit,extended : Boolean := False;
+    direct_size : Natural := direct'Size; -- fixme: remove
+    old_slots : Natural := dir_ino.size/direct'Size;
+    new_slots : Natural := 0;
+    free_slot : Natural;
+  begin
+    while pos <= dir_ino.size loop
+      bnum := inode_fpos_to_bnum(dir_ino, pos);
+      dir_entry_blk := disk_read_dir_entry_block(bnum);
+
+      for dp in dir_entry_blk'Range loop
+        new_slots := new_slots+1;
+        if new_slots > old_slots then -- not found, but room left in dir
+          free_slot := dp;
+          hit := True;
+          tio.put_line("available direntry slot:" & free_slot'Image & ", block" & bnum'Image);
+          exit;
+        end if;
+
+        if dir_entry_blk(dp).inode_num = 0 then
+          free_slot := dp;
+          hit := True;
+          tio.put_line("available direntry slot:" & free_slot'Image & ", dir inode" & dir_num'Image & ", block" & bnum'Image);
+          exit;
+        end if;
+      end loop;
+
+      exit when hit;
+      pos := pos + const.block_size;
+    end loop;
+
+    -- if directory full and no room left in last block, try to extend directory
+    if not hit then
+      new_slots := new_slots+1; -- increase directory size by 1 entry
+      bnum := new_block(dir_ino, dir_ino.size);
+      if bnum = 0 then
+        return;
+      end if;
+      dir_entry_blk := disk_read_dir_entry_block(bnum);
+      free_slot := 1;
+      extended := True;
+      tio.put_line("dir inode" & dir_num'Image & " extended, into block" & bnum'Image);
+      tio.put_line("available direntry slot:" & free_slot'Image & ", dir inode" & dir_num'Image & ", block" & bnum'Image);
+    end if;
+
+    dir_entry_blk(free_slot).name := str & (1..name_t'Last-str'Length => Character'Val(0));
+    dir_entry_blk(free_slot).inode_num := inum;
+    tio.put_line("entry added: " & str & " ->" & inum'Image);
+    disk_write_dir_entry_block(bnum, dir_entry_blk);
+    if new_slots > old_slots then
+      dir_ino.size := new_slots * direct'Size;
+      put_inode(dir_ino);
+      if extended then
+        tio.put_line("dir was extended, writing dir inode" & dir_ino.num'Image & " to disk");
+        put_inode(dir_ino);
+      end if;
+    end if;
+  end add_entry;
+
+  -- allocates new inode, creates entry for it at 'path', initializes it
+  -- returns inode number, or 0 on error
+  function new_inode (path_str : String; procentry : proc.entry_t) return Natural is
+    path : path_t := path_str  & (1..path_t'Last-path_str 'Length => Character'Val(0));
+    final_compt : name_t;
+    ldir_inum : Natural := last_dir(path, procentry, final_compt);
+    inum : Natural;
+    ino : in_mem;
+  begin
+    if ldir_inum = 0 then
+      return 0;
+    end if;
+    -- final dir is accessible, step into the last component
+    inum := advance(ldir_inum, final_compt);
+    if inum = 0 then
+      -- good, doesn't exist - create it
+      tio.put_line("creating last component '" & final_compt & "'");
+      inum := alloc_inode;
+      tio.put_line("allocated inode:" & inum'Image);
+      if inum = 0 then
+        return 0; -- couldn't create inode, out of inodes
+      end if;
+      ino := get_inode(inum);
+      ino.nlinks := ino.nlinks+1;
+      ino.zone(1) := 0; -- no zone
+      put_inode(ino);
+      add_entry(ldir_inum, final_compt, inum);
+      return inum;
+    else
+      -- already exists or some problem
+      tio.put_line("last component '"  & final_compt & "' of path already present, at inode" & inum'Image);
+      return 0;
+    end if;
+  end new_inode;
 end disk.inode;

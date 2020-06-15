@@ -224,7 +224,7 @@ procedure mkfs is
     end incr_link;
 
   begin
-    add_zone(root_inum, zone_num, 32);
+    add_zone(root_inum, zone_num, 2*inode.direct'Size);
     enter_dir(root_inum, ".", root_inum);
     enter_dir(root_inum, "..", root_inum);
     incr_link(root_inum);

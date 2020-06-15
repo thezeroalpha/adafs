@@ -1,7 +1,7 @@
 with const;
 package inode_types is
   n_total_zones : constant := 10; -- total zone numbers in inode
-  type zone_array is array (1..n_total_zones) of Positive;
+  type zone_array is array (1..n_total_zones) of Natural;
   type on_disk is record
     size : Natural; -- file size in bytes
     zone : zone_array;

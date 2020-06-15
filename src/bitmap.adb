@@ -18,7 +18,7 @@ package body bitmap is
     if not is_reading then
       sio.set_mode(disk.all, sio.in_file);
     end if;
-    sio.set_index(disk.all, sio.count(((start_block-1)*1024)+byte_location)); -- FIXME: +1?
+    sio.set_index(disk.all, sio.count(((start_block-1)*1024)+byte_location));
     bitmap_byte_t'read(disk_acc.all, orig_byte);
     new_byte := (orig_byte and not(2#1# * (2**bit_offset))) or (bitmap_byte_t(value) * 2**(bit_offset));
     if not is_writing then
@@ -43,4 +43,16 @@ package body bitmap is
     shifted_byte := Natural(the_byte/(2**bit_offset));
     return one_bit(shifted_byte mod 2) and one_bit(2#1#);
   end get_bit;
+
+  function alloc_bit (search_start : bit_nums) return Natural is
+  begin
+    -- this is gonna be slow..if time allows, try to find a better way
+    for i in search_start..bit_nums'Last loop
+      if get_bit(i) = 0 then
+        set_bit(i, 1);
+        return i;
+      end if;
+    end loop;
+    return 0;
+  end alloc_bit;
 end bitmap;

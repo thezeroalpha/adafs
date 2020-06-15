@@ -24,4 +24,5 @@ package bitmap is
   function size_in_bits return Natural is (bit_nums'Last);
   function size_in_blocks return Natural is (bitmap_blocks);
   function get_start_block return Natural is (start_block);
+  function alloc_bit (search_start : bit_nums) return Natural;
 end bitmap;

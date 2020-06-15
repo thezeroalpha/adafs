@@ -64,5 +64,28 @@ package body adafs is
     proc.put_entry(pid, procentry);
     return fd;
   end open;
+
+  function create (path : String; pid : proc.tab_range) return fd_t is
+    procentry : proc.entry_t := proc.get_entry (pid);
+    fd : filp.fd_t := filp.get_free_fd (procentry.open_filps);
+    filp_slot_num : filp.tab_num_t := filp.get_free_filp;
+    inum : Natural;
+  begin
+    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " creates " & path & " ==");
+    inum := inode.new_inode (path, procentry);
+    tio.put_line("created inode" & inum'Image);
+    if inum = 0 then
+      tio.put_line("Could not create " & path);
+      return filp.null_fd;
+    end if;
+    tio.put_line("Free fd:" & fd'Image);
+    tio.put_line("Free filp slot:" & filp_slot_num'Image);
+
+    filp.tab(filp_slot_num).count := 1;
+    filp.tab(filp_slot_num).ino := inum;
+    procentry.open_filps(fd) := filp_slot_num;
+    proc.put_entry(pid, procentry);
+    return fd;
+  end create;
 end adafs;
 

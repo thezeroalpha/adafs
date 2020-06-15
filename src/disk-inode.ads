@@ -3,6 +3,7 @@ with util;
 with superblock;
 with inode_types; use inode_types;
 with proc;
+with bitmap;
 generic
   super : in out superblock.superblock_t;
 package disk.inode is
@@ -49,4 +50,5 @@ package disk.inode is
   subtype path_t is String (1..255); -- limits.h, PATH_MAX
 
   function path_to_inum (path : path_t; procentry : proc.entry_t) return Natural;
+  function new_inode (path_str : String; procentry : proc.entry_t) return Natural;
 end disk.inode;
