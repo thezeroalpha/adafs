@@ -259,19 +259,19 @@ package body disk.inode is
       return 0; -- no space on device
     end if;
     -- save zsearch in superblock
-    return super.first_data_zone + b; -- FIXME -1 or not?
+    return super.first_data_zone + b - 1;
   end alloc_zone;
 
   -- write a new zone into an inode
   procedure write_map (ino : in out in_mem; pos : Natural; new_zone : Natural) is
     scale : Natural := super.log_zone_size; -- for zone-block conversion
-    zone : Natural := util.bshift_r(((pos+1)/const.block_size)-1, scale); -- relative zone num to insert
+    zone : Natural := util.bshift_r(((pos-1)/const.block_size)+1, scale); -- relative zone num to insert
     zones : Natural := ino.n_dzones;
     nr_indirects : Natural := ino.n_indirs;
     bnum, excess, ind_ex, z, z1 : Natural;
     single, new_dbl, new_ind : Boolean;
   begin
-    if zone < zones then -- position is in the inode itself
+    if zone <= zones then -- position is in the inode itself
       ino.zone(zone) := new_zone;
       put_inode(ino);
       return;
@@ -451,11 +451,12 @@ package body disk.inode is
     -- if directory full and no room left in last block, try to extend directory
     if not hit then
       new_slots := new_slots+1; -- increase directory size by 1 entry
-      bnum := new_block(dir_ino, dir_ino.size);
+      bnum := new_block(dir_ino, dir_ino.size+direct'Size);
       if bnum = 0 then
         return;
       end if;
       dir_entry_blk := disk_read_dir_entry_block(bnum);
+      dir_ino := get_inode(dir_num);
       free_slot := 1;
       extended := True;
       tio.put_line("dir inode" & dir_num'Image & " extended, into block" & bnum'Image);

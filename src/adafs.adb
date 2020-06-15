@@ -72,6 +72,10 @@ package body adafs is
     inum : Natural;
   begin
     tio.put_line(Character'Val(10) & "== pid" & pid'Image & " creates " & path & " ==");
+    if fd = filp.null_fd then
+      tio.put_line("no free fd available");
+      return filp.null_fd;
+    end if;
     inum := inode.new_inode (path, procentry);
     tio.put_line("created inode" & inum'Image);
     if inum = 0 then
