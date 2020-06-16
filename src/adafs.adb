@@ -98,7 +98,9 @@ package body adafs is
     inum, position, fsize, chunk, offset_in_blk : Natural;
     ino : inode.in_mem;
     nbytes : Natural := num_bytes;
+    data_cursor : Natural := 0;
   begin
+    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " writes" & num_bytes'Image & " bytes to fd" & fd'Image & " ==");
     if fd = 0 then
       tio.put_line("cannot write to null fd");
       return 0;
@@ -127,16 +129,18 @@ package body adafs is
     while nbytes /= 0 loop
       offset_in_blk := ((position-1) mod const.block_size)+1;
       chunk :=  (if nbytes < const.block_size-offset_in_blk then nbytes else const.block_size-offset_in_blk);
-      inode.write_chunk(ino, position, offset_in_blk, chunk, nbytes, data(chunk..data'Last));
+      inode.write_chunk(ino, position, offset_in_blk, chunk, nbytes, data(data_cursor..data_cursor+chunk-1));
       nbytes := nbytes - chunk;
+      data_cursor := data_cursor+chunk-1;
       position := position + chunk;
     end loop;
     if position > fsize then
-      ino.size := position;
+      ino := inode.get_inode(inum);
+      ino.size := position-1;
       inode.put_inode(ino);
     end if;
     filp.tab(filp_slot_num).pos := position;
-    return nbytes;
+    return num_bytes-nbytes;
   end write;
 end adafs;
 

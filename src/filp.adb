@@ -13,7 +13,7 @@ package body filp is
   begin
     for f in tab'Range loop
       if tab(f).count = 0 then
-        tab(f).pos := 0;
+        tab(f).pos := 1;
         return f;
       end if;
     end loop;

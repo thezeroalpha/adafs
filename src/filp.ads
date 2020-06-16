@@ -14,7 +14,7 @@ package filp is
 
   null_fd : fd_t := 0;
   no_filp : tab_num_t := 0;
-  tab : tab_t := (others => (count => 0, ino => 0, pos => 0));
+  tab : tab_t := (others => (count => 0, ino => 0, pos => 1));
 
   function get_free_fd (open_filps : open_tab_t) return fd_t;
   function get_free_filp return tab_num_t;

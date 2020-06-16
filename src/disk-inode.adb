@@ -536,7 +536,7 @@ package body disk.inode is
         function read_data_block is new read_block(data_block_t);
         data_block : data_block_t := read_data_block(bnum);
       begin
-        data_block(offset_in_blk..offset_in_blk+data'Length) := data;
+        data_block(offset_in_blk..offset_in_blk+data'Last) := data;
         write_data_block(bnum, data_block);
       end;
     end if;
