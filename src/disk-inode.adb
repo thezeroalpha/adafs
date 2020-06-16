@@ -511,4 +511,35 @@ package body disk.inode is
       return 0;
     end if;
   end new_inode;
+
+  procedure write_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : data_buf_t) is
+    bnum : Natural := inode_fpos_to_bnum(ino, position);
+    procedure write_data_block is new write_block(data_block_t);
+    data_block : data_block_t;
+  begin
+    if bnum = 0 then
+      bnum := new_block(ino, position);
+      if bnum = 0 then
+        tio.put_line("couldn't get new block");
+        return;
+      end if;
+    end if;
+    if chunk /= const.block_size and position >= ino.size and offset_in_blk = 0 then
+      zero_block(bnum);
+    end if;
+
+    if offset_in_blk + chunk = const.block_size then -- writing a full block
+      data_block := data & (1..data_block'Last-data'Length => Character'Val(0));
+      write_data_block(bnum, data_block);
+    else -- writing a partial block
+      declare
+        function read_data_block is new read_block(data_block_t);
+        data_block : data_block_t := read_data_block(bnum);
+      begin
+        data_block(offset_in_blk..offset_in_blk+data'Length) := data;
+        write_data_block(bnum, data_block);
+      end;
+    end if;
+  end write_chunk;
+
 end disk.inode;

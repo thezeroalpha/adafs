@@ -91,5 +91,52 @@ package body adafs is
     proc.put_entry(pid, procentry);
     return fd;
   end create;
+
+  function write (fd : fd_t; num_bytes : Natural; data : dsk.data_buf_t; pid : proc.tab_range) return Natural is
+    procentry : proc.entry_t := proc.get_entry(pid);
+    filp_slot_num : filp.tab_num_t;
+    inum, position, fsize, chunk, offset_in_blk : Natural;
+    ino : inode.in_mem;
+    nbytes : Natural := num_bytes;
+  begin
+    if fd = 0 then
+      tio.put_line("cannot write to null fd");
+      return 0;
+    end if;
+    filp_slot_num := procentry.open_filps(fd);
+    if filp_slot_num = 0 then
+      tio.put_line("cannot write, fd" & fd'Image & " refers to null filp slot");
+      return 0;
+    end if;
+    if num_bytes = 0 then
+      return 0;
+    end if;
+    position := filp.tab(filp_slot_num).pos;
+    inum := filp.tab(filp_slot_num).ino;
+    ino := inode.get_inode(inum);
+    fsize := ino.size;
+    if position > super.max_size - num_bytes then
+      tio.put_line("cannot write, file would be too large");
+      return 0;
+    end if;
+    if position > fsize then
+      inode.clear_zone(ino, fsize);
+    end if;
+
+    -- split the transfer into chunks that don't span two blocks
+    while nbytes /= 0 loop
+      offset_in_blk := ((position-1) mod const.block_size)+1;
+      chunk :=  (if nbytes < const.block_size-offset_in_blk then nbytes else const.block_size-offset_in_blk);
+      inode.write_chunk(ino, position, offset_in_blk, chunk, nbytes, data(chunk..data'Last));
+      nbytes := nbytes - chunk;
+      position := position + chunk;
+    end loop;
+    if position > fsize then
+      ino.size := position;
+      inode.put_inode(ino);
+    end if;
+    filp.tab(filp_slot_num).pos := position;
+    return nbytes;
+  end write;
 end adafs;
 

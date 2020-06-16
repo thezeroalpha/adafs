@@ -34,11 +34,14 @@ package disk.inode is
   end record;
   nr_dir_entries : Natural := const.block_size/direct'Size;
 
+  -- user data
+  subtype data_block_range is Natural range 0..const.block_size;
+
   -- block types
   type inode_block_t is array (1..num_per_block) of on_disk;
   type zone_block_t is array (1..n_indirects_in_block) of Natural;
   type dir_entry_block_t is array (1..nr_dir_entries) of direct;
-
+  subtype data_block_t is data_buf_t (1..data_block_range'Last);
 
   subtype tab_num_t is Natural range 0..const.nr_inodes;
   type tab_t is array (1..tab_num_t'Last) of in_mem;
@@ -51,4 +54,9 @@ package disk.inode is
 
   function path_to_inum (path : path_t; procentry : proc.entry_t) return Natural;
   function new_inode (path_str : String; procentry : proc.entry_t) return Natural;
+  function get_inode (num : Natural) return in_mem;
+  procedure put_inode (ino : in_mem);
+  procedure clear_zone (ino : in_mem; pos : Natural);
+
+  procedure write_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : data_buf_t);
 end disk.inode;

@@ -8,4 +8,5 @@ package adafs is
   subtype fd_t is Natural;
   function open (path : String; pid : proc.tab_range) return fd_t;
   function create (path : String; pid : proc.tab_range) return fd_t;
+  function write (fd : fd_t; num_bytes : Natural; data : dsk.data_buf_t; pid : proc.tab_range) return Natural;
 end adafs;
