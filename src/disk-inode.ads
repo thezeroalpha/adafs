@@ -59,4 +59,5 @@ package disk.inode is
   procedure clear_zone (ino : in_mem; pos : Natural);
 
   procedure write_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : data_buf_t);
+  function read_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural) return data_buf_t;
 end disk.inode;

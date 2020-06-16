@@ -142,5 +142,53 @@ package body adafs is
     filp.tab(filp_slot_num).pos := position;
     return num_bytes-nbytes;
   end write;
+
+  function read (fd : fd_t; num_bytes : Natural; pid : proc.tab_range) return dsk.data_buf_t is
+    procentry : proc.entry_t := proc.get_entry(pid);
+    filp_slot_num : filp.tab_num_t;
+    data_buf : dsk.data_buf_t(1..num_bytes) := (others => Character'Val(0));
+    inum, position, fsize, chunk, offset_in_blk : Natural;
+    nbytes : Natural := num_bytes;
+    data_cursor : Natural := 0;
+    ino : inode.in_mem;
+  begin
+    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " reads" & num_bytes'Image & " bytes from fd" & fd'Image & " ==");
+    if fd = 0 then
+      tio.put_line("cannot write to null fd");
+      return data_buf;
+    end if;
+    filp_slot_num := procentry.open_filps(fd);
+    if filp_slot_num = 0 then
+      tio.put_line("cannot write, fd" & fd'Image & " refers to null filp slot");
+      return data_buf;
+    end if;
+    if num_bytes = 0 then
+      return data_buf;
+    end if;
+    position := filp.tab(filp_slot_num).pos;
+    inum := filp.tab(filp_slot_num).ino;
+    ino := inode.get_inode(inum);
+    fsize := ino.size;
+
+    while nbytes /= 0 loop
+      offset_in_blk := ((position-1) mod const.block_size)+1;
+      chunk :=  (if nbytes < const.block_size-offset_in_blk then nbytes else const.block_size-offset_in_blk);
+      declare
+        bytes_left : Natural := fsize-position+1;
+      begin
+        exit when position > fsize;
+        if chunk > bytes_left then
+          chunk := bytes_left;
+        end if;
+      end;
+      data_buf := inode.read_chunk(ino, position, offset_in_blk, chunk, nbytes);
+      nbytes := nbytes - chunk;
+      data_cursor := data_cursor+chunk-1;
+      position := position + chunk;
+    end loop;
+    filp.tab(filp_slot_num).pos := position;
+    return data_buf;
+  end read;
+
 end adafs;
 

@@ -9,4 +9,5 @@ package adafs is
   function open (path : String; pid : proc.tab_range) return fd_t;
   function create (path : String; pid : proc.tab_range) return fd_t;
   function write (fd : fd_t; num_bytes : Natural; data : dsk.data_buf_t; pid : proc.tab_range) return Natural;
+  function read (fd : fd_t; num_bytes : Natural; pid : proc.tab_range) return dsk.data_buf_t;
 end adafs;

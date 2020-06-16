@@ -542,4 +542,18 @@ package body disk.inode is
     end if;
   end write_chunk;
 
+  function read_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural) return data_buf_t is
+    bnum : Natural := inode_fpos_to_bnum(ino, position);
+    function read_data_block is new read_block(data_block_t);
+    data_block : data_block_t;
+    data_buf : data_buf_t(1..nbytes) := (others => Character'Val(0));
+  begin
+    if bnum = 0 then
+      tio.put_line("reading from nonexistent block");
+      return data_buf;
+    end if;
+    data_block := read_data_block(bnum);
+    data_buf(1..chunk) := data_block(offset_in_blk..offset_in_blk+chunk-1);
+    return data_buf;
+  end read_chunk;
 end disk.inode;
