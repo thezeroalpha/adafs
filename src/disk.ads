@@ -21,7 +21,7 @@ package disk is
   n_inodes : Natural := inode_types.calc_num_inodes_for_blocks (size_blocks);
   n_zones : Natural := size_blocks;
 
-  type data_buf_t is array (Natural range <>) of Character;
+  type data_buf_t is array (Positive range <>) of Character;
 
   function init return Boolean;
   procedure close;

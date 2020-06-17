@@ -34,10 +34,8 @@ package body adafs is
         tio.put_line("sanity checks:");
         tio.put_line(t & "imap size" & imap.size_in_blocks'Image);
         tio.put_line(t & "first bit should be 1 (allocated), is" & imap.get_bit(1)'Image);
-        tio.put_line(t & "second bit should be 0 (free), is" & imap.get_bit(2)'Image);
         tio.put_line(t & "zmap size" & zmap.size_in_blocks'Image);
         tio.put_line(t & "first bit should be 1 (allocated), is" & zmap.get_bit(1)'Image);
-        tio.put_line(t & "second bit should be 0 (free), is" & zmap.get_bit(2)'Image);
       end;
     end if;
   end init;
@@ -66,7 +64,7 @@ package body adafs is
     filp_slot_num : filp.tab_num_t := filp.get_free_filp;
     inum : Natural;
   begin
-    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " opens " & path & " ==");
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " opens " & path & " **");
     inum := inode.path_to_inum (path & (1..inode.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
       tio.put_line ("couldn't open " & path);
@@ -89,7 +87,7 @@ package body adafs is
     filp_slot_num : filp.tab_num_t := filp.get_free_filp;
     inum : Natural;
   begin
-    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " creates " & path & " ==");
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " creates " & path & " **");
     if fd = filp.null_fd then
       tio.put_line("no free fd available");
       return filp.null_fd;
@@ -116,9 +114,10 @@ package body adafs is
     inum, position, fsize, chunk, offset_in_blk : Natural;
     ino : inode.in_mem;
     nbytes : Natural := num_bytes;
-    data_cursor : Natural := 0;
+    data_cursor : Natural := data'First;
   begin
-    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " writes" & num_bytes'Image & " bytes to fd" & fd'Image & " ==");
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " writes" & num_bytes'Image & " bytes to fd" & fd'Image & " **");
+    tio.put_line("data: " & String(data(data'First..num_bytes)));
     if fd = 0 then
       tio.put_line("cannot write to null fd");
       return 0;
@@ -149,7 +148,7 @@ package body adafs is
       chunk :=  (if nbytes < const.block_size-offset_in_blk then nbytes else const.block_size-offset_in_blk);
       inode.write_chunk(ino, position, offset_in_blk, chunk, nbytes, data(data_cursor..data_cursor+chunk-1));
       nbytes := nbytes - chunk;
-      data_cursor := data_cursor+chunk-1;
+      data_cursor := data_cursor+chunk;
       position := position + chunk;
     end loop;
     if position > fsize then
@@ -170,7 +169,7 @@ package body adafs is
     data_cursor : Natural := 0;
     ino : inode.in_mem;
   begin
-    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " reads" & num_bytes'Image & " bytes from fd" & fd'Image & " ==");
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " reads" & num_bytes'Image & " bytes from fd" & fd'Image & " **");
     if fd = 0 then
       tio.put_line("cannot read from null fd");
       return data_buf;
@@ -213,7 +212,7 @@ package body adafs is
     filp_slot_num : filp.tab_num_t;
     pos : Natural;
   begin
-    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " seeks fd" & fd'Image & " ==");
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " seeks fd" & fd'Image & " **");
     if fd = 0 then
       tio.put_line("cannot seek in null fd");
       return 0;
@@ -255,7 +254,7 @@ package body adafs is
     procentry : proc.entry_t := proc.get_entry(pid);
     filp_slot_num : filp.tab_num_t;
   begin
-    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " closes fd" & fd'Image & " ==");
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " closes fd" & fd'Image & " **");
     if fd = 0 then
       tio.put_line("cannot close null fd");
       return;
