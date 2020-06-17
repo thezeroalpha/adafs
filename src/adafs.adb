@@ -42,6 +42,24 @@ package body adafs is
     end if;
   end init;
 
+  procedure deinit is
+  begin
+    for pid in proc.tab'Range loop
+      declare
+        procentry : proc.entry_t := proc.get_entry(pid);
+      begin
+        for fd in procentry.open_filps'Range loop
+          if procentry.open_filps(fd) /= 0 then
+            close(fd, pid);
+          end if;
+        end loop;
+        procentry := (is_null => True);
+        proc.put_entry(pid, procentry);
+      end;
+    end loop;
+    dsk.close;
+  end deinit;
+
   function open (path : String; pid : proc.tab_range) return fd_t is
     procentry : proc.entry_t := proc.get_entry (pid); -- fproc entry for the specific process
     fd : filp.fd_t := filp.get_free_fd (procentry.open_filps);

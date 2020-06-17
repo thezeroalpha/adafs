@@ -4,6 +4,7 @@ package adafs is
   super : superblock.superblock_t;
   package inode is new dsk.inode (super);
   procedure init;
+  procedure deinit;
 
   subtype fd_t is Natural;
   function open (path : String; pid : proc.tab_range) return fd_t;

@@ -16,13 +16,8 @@ package proc is
   subtype tab_range is Positive range 1..const.nr_procs;
   type tab_t is array (tab_range) of entry_t;
 
-  tab : tab_t := (
-    others => (
-      is_null => False,
-      workdir => 1,
-      rootdir => 1,
-      open_filps => (others => filp.null_fd)));
+  tab : tab_t := (others => (is_null => True));
 
-  function get_entry (pid : tab_range) return entry_t is (tab(pid));
+  function get_entry (pid : tab_range) return entry_t;
   procedure put_entry (pid : tab_range; procentry : entry_t);
 end proc;
