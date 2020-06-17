@@ -208,6 +208,49 @@ package body adafs is
     return data_buf;
   end read;
 
+  function lseek (fd : fd_t; offset : Integer; whence : seek_whence_t; pid : proc.tab_range) return Natural is
+    procentry : proc.entry_t := proc.get_entry(pid);
+    filp_slot_num : filp.tab_num_t;
+    pos : Natural;
+  begin
+    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " seeks fd" & fd'Image & " ==");
+    if fd = 0 then
+      tio.put_line("cannot seek in null fd");
+      return 0;
+    end if;
+    filp_slot_num := procentry.open_filps(fd);
+    if filp_slot_num = 0 then
+      tio.put_line("cannot seek, fd" & fd'Image & " refers to null filp slot");
+      return 0;
+    end if;
+    case whence is
+      when SEEK_SET =>
+        pos := 0;
+      when SEEK_CUR =>
+        pos := filp.tab(filp_slot_num).pos;
+      when SEEK_END =>
+        declare
+          inum : Natural := filp.tab(filp_slot_num).ino;
+          ino : inode.in_mem := inode.get_inode(inum);
+        begin
+          pos := ino.size;
+        end;
+    end case;
+
+    if offset > 0 and pos+offset < pos then
+      tio.put_line("invalid position");
+      return 0;
+    end if;
+    if offset < 0 and pos + offset > pos then
+      tio.put_line("invalid position");
+      return 0;
+    end if;
+    pos := pos+offset;
+    tio.put_line("moving to byte" & pos'Image);
+    filp.tab(filp_slot_num).pos := pos;
+    return pos;
+  end lseek;
+
   procedure close (fd : fd_t; pid : proc.tab_range) is
     procentry : proc.entry_t := proc.get_entry(pid);
     filp_slot_num : filp.tab_num_t;
