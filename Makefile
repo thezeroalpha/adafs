@@ -19,6 +19,9 @@ analyze:
 	gprbuild -P $(PROJFILE) -d -f -gnats -c \
 	  && gprbuild -P $(PROJFILE) -d -f -gnatc -gnats -c
 
+mem:
+	gprbuild -P $(PROJFILE) -largs -lgmem
+
 run: all
 	mkdir -p "$(MOUNTPOINT)"
 	dist/adafs "$(MOUNTPOINT)"
