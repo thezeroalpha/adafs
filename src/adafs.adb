@@ -154,12 +154,12 @@ package body adafs is
   begin
     tio.put_line(Character'Val(10) & "== pid" & pid'Image & " reads" & num_bytes'Image & " bytes from fd" & fd'Image & " ==");
     if fd = 0 then
-      tio.put_line("cannot write to null fd");
+      tio.put_line("cannot read from null fd");
       return data_buf;
     end if;
     filp_slot_num := procentry.open_filps(fd);
     if filp_slot_num = 0 then
-      tio.put_line("cannot write, fd" & fd'Image & " refers to null filp slot");
+      tio.put_line("cannot read, fd" & fd'Image & " refers to null filp slot");
       return data_buf;
     end if;
     if num_bytes = 0 then
@@ -190,5 +190,22 @@ package body adafs is
     return data_buf;
   end read;
 
+  procedure close (fd : fd_t; pid : proc.tab_range) is
+    procentry : proc.entry_t := proc.get_entry(pid);
+    filp_slot_num : filp.tab_num_t;
+  begin
+    tio.put_line(Character'Val(10) & "== pid" & pid'Image & " closes fd" & fd'Image & " ==");
+    if fd = 0 then
+      tio.put_line("cannot close null fd");
+      return;
+    end if;
+    filp_slot_num := procentry.open_filps(fd);
+    if filp_slot_num = 0 then
+      tio.put_line("cannot close fd" & fd'Image & ", is not open");
+    end if;
+    filp.tab(filp_slot_num).count := filp.tab(filp_slot_num).count-1;
+    procentry.open_filps(fd) := 0;
+    proc.put_entry(pid, procentry);
+  end close;
 end adafs;
 

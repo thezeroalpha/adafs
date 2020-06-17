@@ -1,49 +1,90 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with adafs, proc;
 procedure main is
-  procedure write_data is
-    fd : Natural;
-    pid : constant := 1;
-    n : Natural;
-    data : adafs.dsk.data_buf_t := "Hello, World!";
-  begin
-    fd := adafs.create("/sesame", pid);
-    put_line("new file /sesame assigned fd:" & fd'Image & " (should be 1)");
-    n := adafs.write(fd, data'Length, data, pid);
-    put_line("bytes written:" & n'Image);
-  end write_data;
-  procedure read_data is
-    fd : Natural;
-    pid : constant := 1;
-    bytes_to_read : Positive := 4;
-  begin
-    fd := adafs.open("/sesame", pid);
-    put_line("file /sesame opened at fd:" & fd'Image & " (should be 1)");
-    declare
-      data : adafs.dsk.data_buf_t (1..bytes_to_read);
-    begin
-      data := adafs.read(fd, bytes_to_read, pid);
-      put_line("read" & bytes_to_read'Image & " bytes from fd" & fd'Image & ": " & String(data) & " (yes)");
-    end;
-    bytes_to_read := 2;
-    declare
-      data : adafs.dsk.data_buf_t (1..bytes_to_read);
-    begin
-      data := adafs.read(fd, bytes_to_read, pid);
-      put_line("read" & bytes_to_read'Image & " bytes from fd" & fd'Image & ": " & String(data) & " (god)");
-    end;
-    bytes_to_read := 500;
-    declare
-      data : adafs.dsk.data_buf_t (1..bytes_to_read);
-    begin
-      data := adafs.read(fd, bytes_to_read, pid);
-      put_line("read" & bytes_to_read'Image & " bytes from fd" & fd'Image & ": " & String(data) & " (Wake up!)");
-    end;
-  end read_data;
+  fd1, fd2 : Natural;
+  pid : constant := 1;
 begin
   put_line ("Main running, assuming fresh adafs image");
   adafs.init;
-  --  write_data;
-  read_data;
+  -- create the file
+  fd1 := adafs.create("/sesame", pid);
+
+  -- write 13 bytes
+  declare
+    to_write : adafs.dsk.data_buf_t := "Hello, World!";
+    n : Natural;
+  begin
+    n := adafs.write(fd1, to_write'Length, to_write, pid);
+  end;
+
+  -- read 2 bytes from current position, should be null
+  declare
+    bytes_to_read : constant := 2;
+    read_data : adafs.dsk.data_buf_t (1..bytes_to_read);
+  begin
+    read_data  := adafs.read(fd1, bytes_to_read, pid);
+    put_line("two bytes read are null?" & Boolean'(read_data(1) = (Character'Val(0)) and read_data(2) = (Character'Val(0)))'Image);
+  end;
+
+  -- close the file
+  adafs.close(fd1, pid);
+
+
+  -- try to read 1 byte from closed file, should fail
+  declare
+    bytes_to_read : constant := 1;
+    read_data : adafs.dsk.data_buf_t (1..bytes_to_read);
+  begin
+    read_data  := adafs.read(fd1, bytes_to_read, pid);
+    put_line("this read call should fail");
+  end;
+
+  -- try to write 1 byte to closed file, should fail
+  declare
+    to_write : adafs.dsk.data_buf_t := "F";
+    n : Natural;
+  begin
+    n := adafs.write(fd1, to_write'Length, to_write, pid);
+    put_line("this write call should fail");
+  end;
+
+  fd2 := adafs.open("/sesame", pid);
+  put_line("first fd == second fd? (should be true) " & Boolean'(fd1 = fd2)'Image);
+
+  -- read 13 bytes, should move cursor to pos 14
+  declare
+    bytes_to_read : constant := 13;
+    read_data : adafs.dsk.data_buf_t (1..bytes_to_read);
+  begin
+    read_data := adafs.read(fd2, bytes_to_read, pid);
+  end;
+
+  -- read 1 byte, should return null and not move cursor beyond eof
+  declare
+    bytes_to_read : constant := 1;
+    read_data : adafs.dsk.data_buf_t (1..bytes_to_read);
+  begin
+    read_data := adafs.read(fd2, bytes_to_read, pid);
+    put_line("read a null byte? (should be true) " & Boolean'(read_data(1) = Character'Val(0))'Image);
+  end;
+
+  -- write more bytes
+  declare
+    to_write : adafs.dsk.data_buf_t := " GOOD STUFF";
+    n : Natural;
+  begin
+    n := adafs.write(fd2, to_write'Length, to_write, pid);
+  end;
+  adafs.close(fd2, pid);
+
+  fd1 := adafs.open("/sesame", pid);
+  declare
+    bytes_to_read : constant := 24;
+    read_data : adafs.dsk.data_buf_t (1..bytes_to_read);
+  begin
+    read_data  := adafs.read(fd1, bytes_to_read, pid);
+    put_line("read" & bytes_to_read'Image & " bytes from fd" & fd1'Image & ": " & String(read_data));
+  end;
+  adafs.close(fd1, pid);
 end main;
 
