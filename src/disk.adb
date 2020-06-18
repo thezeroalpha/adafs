@@ -54,30 +54,33 @@ package body disk is
    procedure Finalize (disk : in out disk_t) is
    begin
      sio.close(disk.acc.all);
+     disk.filename := (others => adafs.nullchar);
+     disk.acc := null;
+     disk.super.magic := 0;
    end Finalize;
 
    disk : aliased disk_t;
 
    function get_disk return access disk_t is (disk'Access);
 
-   ----------------
-   -- zero_block --
-   ----------------
-
    procedure zero_block (blk : block_num) is
+     type zero_block_arr is array (1..adafs.block_size) of Character;
+     zero_blk : zero_block_arr := (others => adafs.nullchar);
+     procedure write_zero_block is new write_block (zero_block_arr);
    begin
-      pragma Compile_Time_Warning (Standard.True, "zero_block unimplemented");
-      raise Program_Error with "Unimplemented procedure zero_block";
+     if blk /= no_block then
+       write_zero_block(blk, zero_blk);
+     end if;
    end zero_block;
-
-   ---------------
-   -- zero_disk --
-   ---------------
 
    procedure zero_disk is
    begin
-      pragma Compile_Time_Warning (Standard.True, "zero_disk unimplemented");
-      raise Program_Error with "Unimplemented procedure zero_disk";
+     tio.put_line ("Zeroing disk");
+     for i in 1..size_blocks loop
+       zero_block (i);
+       tio.put (adafs.rchar & "complete blocks " & i'Image & "/" & size_blocks'Image);
+     end loop;
+     tio.put(adafs.nlchar);
    end zero_disk;
 
 end disk;

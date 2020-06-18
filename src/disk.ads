@@ -12,8 +12,6 @@ package disk is
       filename : String(filename_param'Range);
       super : adafs.superblock.superblock_t;
     end record;
-  procedure Initialize (disk : in out disk_t);
-  procedure Finalize (disk : in out disk_t);
   function get_disk return access disk_t;
 
   size_bytes : Natural := Natural (Ada.Directories.Size(filename_param));
@@ -50,5 +48,7 @@ package disk is
   private
   stream_io_disk_ft : aliased sio.file_type; -- has to be global to allow access
   stream_io_disk_acc : sio.stream_access;
+  procedure Initialize (disk : in out disk_t);
+  procedure Finalize (disk : in out disk_t);
 
 end disk;
