@@ -1,9 +1,8 @@
-with Ada.Text_IO; use Ada.Text_IO;
-with adafs, proc;
+with disk;
+with ada.text_io;
 procedure main is
-  pid : constant := 1;
-  pos : Natural := 1;
+  package dsk is new disk ("disk.img");
 begin
-  put_line ("Main running, assuming fresh adafs image");
+  ada.text_io.put_line("OK");
+  ada.text_io.put_line("num inodes:" & dsk.get_disk.super.n_inodes'Image);
 end main;
-
