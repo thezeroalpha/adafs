@@ -1,4 +1,6 @@
-package body filp is
+package body adafs.filp
+  with SPARK_Mode
+is
   function get_free_fd (open_filps : open_tab_t) return fd_t is
   begin
     for i in open_filps'Range loop
@@ -9,15 +11,16 @@ package body filp is
     return null_fd;
   end get_free_fd;
 
-  function get_free_filp return tab_num_t is
+  procedure get_free_filp (free_fd : out tab_num_t) is
   begin
-    for f in tab'Range loop
+    free_fd := no_filp;
+    for f in tab_t'Range loop
+      pragma Loop_Invariant (free_fd = no_filp);
       if tab(f).count = 0 then
         tab(f).pos := 1;
-        return f;
+        free_fd := f;
+        return;
       end if;
     end loop;
-    return no_filp;
   end get_free_filp;
-end filp;
-
+end adafs.filp;

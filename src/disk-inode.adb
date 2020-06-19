@@ -1,11 +1,8 @@
-package body disk.inode is
-  procedure set_super (sp : superblock.superblock_t) is
-  begin
-    super := sp;
-  end set_super;
-
+package body disk.inode
+  with SPARK_Mode
+is
   function get_inode (num : Natural) return in_mem is
-    offset : Natural := 3+super.imap_blocks+super.zmap_blocks;
+    offset : Natural := 3+get_disk.super.imap_blocks+get_disk.super.zmap_blocks;
     bnum : block_num := ((num-1)/num_per_block)+offset;
     function disk_read_iblock is new read_block(inode_block_t);
     iblock : inode_block_t := disk_read_iblock(bnum);
@@ -25,7 +22,7 @@ package body disk.inode is
   end get_inode;
 
   procedure put_inode (ino : in_mem) is
-    offset : Natural := 3+super.imap_blocks+super.zmap_blocks;
+    offset : Natural := 3+get_disk.super.imap_blocks+get_disk.super.zmap_blocks;
     bnum : block_num := ((ino.num-1)/num_per_block)+offset;
     function disk_read_iblock is new read_block(inode_block_t);
     procedure disk_write_iblock is new write_block(inode_block_t);
@@ -43,10 +40,10 @@ package body disk.inode is
 
   function inode_fpos_to_bnum (ino : in_mem; fpos : Natural) return Natural is
     --analogous to minix read.c:read_map
-    scale : Natural := super.log_zone_size; -- for block-zone conversion
-    block_pos : Natural := ((fpos-1)/const.block_size)+1; -- relative block num in file (e.g. "block 2 of file")
-    zone_num : Natural := util.bshift_r (block_pos, scale); -- position's zone
-    block_pos_in_zone : Natural := block_pos-(util.bshift_l(zone_num, scale));
+    scale : Natural := get_disk.super.log_zone_size; -- for block-zone conversion
+    block_pos : Natural := ((fpos-1)/adafs.block_size)+1; -- relative block num in file (e.g. "block 2 of file")
+    zone_num : Natural := adafs.bshift_r (block_pos, scale); -- position's zone
+    block_pos_in_zone : Natural := block_pos-(adafs.bshift_l(zone_num, scale));
     dzones : Natural := ino.n_dzones;
 
     index, excess, znum, bnum : Natural;
@@ -57,7 +54,7 @@ package body disk.inode is
       return (
         if znum = 0
         then 0
-        else (util.bshift_l(znum, scale)+block_pos_in_zone));
+        else (adafs.bshift_l(znum, scale)+block_pos_in_zone));
     end if;
 
     -- if indirect
@@ -73,7 +70,7 @@ package body disk.inode is
           return 0;
         end if;
         excess := excess-ino.n_indirs; -- single indir doesn't count
-        bnum := util.bshift_l(znum, scale);
+        bnum := adafs.bshift_l(znum, scale);
         index := ((excess-1)/ino.n_indirs)+1;
         znum := disk_read_zone_block(bnum)(index); -- znum is zone for single
         excess := ((excess-1) mod ino.n_indirs)+1; -- index into single indir block
@@ -82,12 +79,12 @@ package body disk.inode is
       if znum = 0 then
         return 0;
       end if;
-      bnum := util.bshift_l(znum, scale); -- bnum is block num of single indir
+      bnum := adafs.bshift_l(znum, scale); -- bnum is block num of single indir
       znum := disk_read_zone_block(bnum)(excess);
       return (
         if znum = 0
         then 0
-        else util.bshift_l(znum,scale)+block_pos_in_zone);
+        else adafs.bshift_l(znum,scale)+block_pos_in_zone);
     end;
   end inode_fpos_to_bnum;
 
@@ -117,7 +114,7 @@ package body disk.inode is
         end if;
       end loop;
 
-      pos := pos + const.block_size;
+      pos := pos + adafs.block_size;
     end loop;
     -- not found
     return 0;
@@ -126,7 +123,7 @@ package body disk.inode is
   -- given 'path', parse it as far as last dir.
   -- fetch inode for that dir into inode table, return its index.
   -- the final component is in 'final'
-  function last_dir (path : path_t; procentry : proc.entry_t; final : out name_t) return Natural is
+  function last_dir (path : path_t; procentry : adafs.proc.entry_t; final : out name_t) return Natural is
     function parse_next (path : path_t; cursor : in out Positive) return String is
       procedure skip_slashes is
       begin
@@ -186,7 +183,7 @@ package body disk.inode is
   end last_dir;
 
   -- parse 'path' and return its inode number. analogous to 'eat_path'
-  function path_to_inum (path : path_t; procentry : proc.entry_t) return Natural is
+  function path_to_inum (path : path_t; procentry : adafs.proc.entry_t) return Natural is
     final_compt : name_t;
     ldir_inum : Natural := last_dir(path, procentry, final_compt);
   begin
@@ -210,12 +207,9 @@ package body disk.inode is
   end wipe_inode;
 
   function alloc_inode return Natural is
-    package imap is new bitmap (
-      bitmap_blocks => super.imap_blocks,
-      start_block => const.imap_start,
-      block_size_bytes => const.block_size,
-      disk => disk'Access,
-      disk_acc => disk_acc'Access);
+    package imap is new disk.bitmap (
+      n_bitmap_blocks => get_disk.super.imap_blocks,
+      start_block => adafs.imap_start);
     imap_bit_num : imap.bit_nums := imap.alloc_bit(1); -- ideally, store search start in superblock and don't search whole bitmap (s_isearch)
     ino : in_mem;
   begin
@@ -234,38 +228,32 @@ package body disk.inode is
 
   function alloc_zone (nearby_zone : Natural) return Natural is
     package imap is new bitmap (
-      bitmap_blocks => super.imap_blocks,
-      start_block => const.imap_start,
-      block_size_bytes => const.block_size,
-      disk => disk'Access,
-      disk_acc => disk_acc'Access);
+      n_bitmap_blocks => get_disk.super.imap_blocks,
+      start_block => adafs.imap_start);
 
     package zmap is new bitmap (
-      bitmap_blocks => super.zmap_blocks,
-      start_block => imap.get_start_block+imap.size_in_blocks,
-      block_size_bytes => const.block_size,
-      disk => disk'Access,
-      disk_acc => disk_acc'Access);
+      n_bitmap_blocks => get_disk.super.zmap_blocks,
+      start_block => imap.get_start_block+imap.size_in_blocks);
 
     b,bit : Natural;
   begin
-    if nearby_zone = super.first_data_zone then
+    if nearby_zone = get_disk.super.first_data_zone then
       bit := 1; -- should actually be s_zsearch for better efficiency
     else
-      bit := nearby_zone-(super.first_data_zone); -- FIXME -1 or not?
+      bit := nearby_zone-(get_disk.super.first_data_zone); -- FIXME -1 or not?
     end if;
     b := zmap.alloc_bit(bit);
     if b = 0 then
       return 0; -- no space on device
     end if;
     -- save zsearch in superblock
-    return super.first_data_zone + b - 1;
+    return get_disk.super.first_data_zone + b - 1;
   end alloc_zone;
 
   -- write a new zone into an inode
   procedure write_map (ino : in out in_mem; pos : Natural; new_zone : Natural) is
-    scale : Natural := super.log_zone_size; -- for zone-block conversion
-    zone : Natural := util.bshift_r(((pos-1)/const.block_size)+1, scale); -- relative zone num to insert
+    scale : Natural := get_disk.super.log_zone_size; -- for zone-block conversion
+    zone : Natural := adafs.bshift_r(((pos-1)/adafs.block_size)+1, scale); -- relative zone num to insert
     zones : Natural := ino.n_dzones;
     nr_indirects : Natural := ino.n_indirs;
     bnum, excess, ind_ex, z, z1 : Natural;
@@ -298,7 +286,7 @@ package body disk.inode is
       if ind_ex >= nr_indirects then
         return; -- too big
       end if;
-      bnum := util.bshift_l(z, scale);
+      bnum := adafs.bshift_l(z, scale);
       if new_dbl then
         zero_block(bnum);
       end if;
@@ -334,7 +322,7 @@ package body disk.inode is
     end if;
 
     -- z1 is indirect block's zone num
-    bnum := util.bshift_l(z1, scale);
+    bnum := adafs.bshift_l(z1, scale);
     if new_ind then
       zero_block(bnum);
     end if;
@@ -352,16 +340,16 @@ package body disk.inode is
 
   -- zero a zone. 'pos' gives byte in first block to be zeroed
   procedure clear_zone (ino : in_mem; pos : Natural) is
-    scale : Natural := super.log_zone_size;
+    scale : Natural := get_disk.super.log_zone_size;
     position,next,blo,bhi : Natural;
   begin
     if scale = 0 then -- block size and zone size are equal, not needed
       return;
     end if;
 
-    zone_size := util.bshift_l(const.block_size, scale);
+    zone_size := adafs.bshift_l(adafs.block_size, scale);
     position := (pos/zone_size) * zone_size;
-    next := position + const.block_size;
+    next := position + adafs.block_size;
     if next/zone_size /= position/zone_size then -- pos in last block of a zone, don't clear
       return;
     end if;
@@ -369,7 +357,7 @@ package body disk.inode is
     if blo = 0 then
       return;
     end if;
-    bhi := util.bshift_l(util.bshift_r(blo, scale)+1, scale)-1;
+    bhi := adafs.bshift_l(adafs.bshift_r(blo, scale)+1, scale)-1;
 
     -- clear blocks between blo and bhi
     for i in blo..bhi loop
@@ -388,7 +376,7 @@ package body disk.inode is
       return block_num;
     else
       if the_inode.zone(1) = 0 then
-        z := super.first_data_zone;
+        z := get_disk.super.first_data_zone;
       else
         z := the_inode.zone(1);
       end if;
@@ -401,9 +389,9 @@ package body disk.inode is
         clear_zone(the_inode, pos);
       end if;
 
-      base_block := util.bshift_l(z, super.log_zone_size);
-      zone_size := util.bshift_l(const.block_size, super.log_zone_size);
-      block_num := base_block + ((pos mod zone_size)/const.block_size);
+      base_block := adafs.bshift_l(z, get_disk.super.log_zone_size);
+      zone_size := adafs.bshift_l(adafs.block_size, get_disk.super.log_zone_size);
+      block_num := base_block + ((pos mod zone_size)/adafs.block_size);
       zero_block(block_num);
       return block_num;
    end if;
@@ -445,7 +433,7 @@ package body disk.inode is
       end loop;
 
       exit when hit;
-      pos := pos + const.block_size;
+      pos := pos + adafs.block_size;
     end loop;
 
     -- if directory full and no room left in last block, try to extend directory
@@ -479,7 +467,7 @@ package body disk.inode is
 
   -- allocates new inode, creates entry for it at 'path', initializes it
   -- returns inode number, or 0 on error
-  function new_inode (path_str : String; procentry : proc.entry_t) return Natural is
+  function new_inode (path_str : String; procentry : adafs.proc.entry_t) return Natural is
     path : path_t := path_str  & (1..path_t'Last-path_str 'Length => Character'Val(0));
     final_compt : name_t;
     ldir_inum : Natural := last_dir(path, procentry, final_compt);
@@ -512,7 +500,7 @@ package body disk.inode is
     end if;
   end new_inode;
 
-  procedure write_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : data_buf_t) is
+  procedure write_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : adafs.data_buf_t) is
     bnum : Natural := inode_fpos_to_bnum(ino, position);
     procedure write_data_block is new write_block(data_block_t);
     data_block : data_block_t;
@@ -524,11 +512,11 @@ package body disk.inode is
         return;
       end if;
     end if;
-    if chunk /= const.block_size and position >= ino.size and offset_in_blk = 0 then
+    if chunk /= adafs.block_size and position >= ino.size and offset_in_blk = 0 then
       zero_block(bnum);
     end if;
 
-    if offset_in_blk + chunk = const.block_size then -- writing a full block
+    if offset_in_blk + chunk = adafs.block_size then -- writing a full block
       data_block := data & (1..data_block'Last-data'Length => Character'Val(0));
       write_data_block(bnum, data_block);
     else -- writing a partial block
@@ -542,11 +530,11 @@ package body disk.inode is
     end if;
   end write_chunk;
 
-  function read_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural) return data_buf_t is
+  function read_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural) return adafs.data_buf_t is
     bnum : Natural := inode_fpos_to_bnum(ino, position);
     function read_data_block is new read_block(data_block_t);
     data_block : data_block_t;
-    data_buf : data_buf_t(1..nbytes) := (others => Character'Val(0));
+    data_buf : adafs.data_buf_t(1..nbytes) := (others => Character'Val(0));
   begin
     if bnum = 0 then
       tio.put_line("reading from nonexistent block");
