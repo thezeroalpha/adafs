@@ -14,6 +14,7 @@ project AdaFS is
   end Builder;
 
   package Compiler is
+    for Local_Configuration_Pragmas use "pragmas.adc";
     for Default_Switches("C") use external_as_list ("FUSE_LIB", " ");
     for Default_Switches("Ada") use ("-g");
   end Compiler;
