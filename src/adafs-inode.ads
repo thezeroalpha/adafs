@@ -11,6 +11,12 @@ is
     with Size => (4*2+n_total_zones*4)*8;
 
   inode_size : Positive := on_disk'Size;
-  num_per_block : Natural := block_size/inode_size;
-  function calc_num_inodes_for_blocks (nblocks : Natural) return Natural;
+  num_per_block : Natural range 1..block_size := block_size/inode_size;
+  function calc_num_inodes_for_blocks (nblocks : Natural) return Natural
+    with Global => (input => num_per_block),
+         Depends => (calc_num_inodes_for_blocks'Result => (nblocks, num_per_block)),
+         Pre => nblocks in Natural'Range,
+         Post => (calc_num_inodes_for_blocks'Result >= 0) and (calc_num_inodes_for_blocks'Result <= 65535);
+
+
 end adafs.inode;

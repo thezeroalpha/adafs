@@ -19,7 +19,8 @@ analyze:
 	gprbuild -P $(PROJFILE) -gnatc -d -f -gnata -c
 
 prove:
-	gnatprove -P "$(PROJFILE)" --report=statistics
+	gnatprove -P "$(PROJFILE)" --report=fail
+	@# might want to switch this for --report=statistics later
 
 test: fs
 	dist/test

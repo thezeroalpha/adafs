@@ -1,5 +1,7 @@
 with Ada.Task_Identification;
-package body disk is
+package body disk
+  with SPARK_Mode
+is
   function is_reading return Boolean is (if sio."="(sio.mode(stream_io_disk_ft), sio.in_file) then True else False);
   function is_writing return Boolean is (if sio."="(sio.mode(stream_io_disk_ft), sio.out_file) then True else False);
 

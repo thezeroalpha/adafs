@@ -1,6 +1,7 @@
 package adafs.superblock
   with SPARK_Mode
 is
+  pragma Warnings (Off, "*bits of*unused");
   type superblock_t is record
     n_inodes : Natural; -- usable inodes
     zones : Natural; -- total device size including bit maps
@@ -10,7 +11,6 @@ is
     log_zone_size : Natural; -- log2( blocks/zone )
     max_size : Natural; -- max file size on the device
     magic : Natural; -- superblock magic number
-  end record;
-  pragma Warnings (Off, "*bits of*unused");
-  for superblock_t'Size use block_size;
+  end record
+    with Size => block_size;
 end adafs.superblock;

@@ -1,4 +1,6 @@
-package body adafs.inode is
+package body adafs.inode
+  with SPARK_Mode
+is
   function calc_num_inodes_for_blocks (nblocks : Natural) return Natural is
     inode_max : constant := 65535;
     i : Natural := nblocks/3;
