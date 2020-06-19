@@ -2,7 +2,9 @@ with Ada.Directories, Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Finalization;
 with adafs, adafs.inode, adafs.superblock;
 generic
   filename_param : String;
-package disk is
+package disk
+  with SPARK_Mode
+is
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;
 

@@ -1,4 +1,6 @@
-package adafs.superblock is
+package adafs.superblock
+  with SPARK_Mode
+is
   type superblock_t is record
     n_inodes : Natural; -- usable inodes
     zones : Natural; -- total device size including bit maps

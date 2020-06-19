@@ -18,6 +18,9 @@ analyze:
 	@# https://docs.adacore.com/gnat_ugn-docs/html/gnat_ugn/gnat_ugn/building_executable_programs_with_gnat.html
 	gprbuild -P $(PROJFILE) -gnatc -d -f -gnata -c
 
+prove:
+	gnatprove -P "$(PROJFILE)" --report=statistics
+
 test: fs
 	dist/test
 mem:

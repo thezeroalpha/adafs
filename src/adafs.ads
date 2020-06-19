@@ -1,4 +1,6 @@
-package adafs is
+package adafs
+  with SPARK_Mode
+is
   block_size : constant := 1024; -- bytes
   bootblock_num : constant := 1;
   superblock_num : constant := 2;
