@@ -4,7 +4,6 @@ generic
   n_bitmap_blocks : Natural;
   start_block : Natural;
 package disk.bitmap
-  with SPARK_Mode
 is
   pragma Elaborate_Body (disk.bitmap);
   subtype bit_nums is Integer range 1..n_bitmap_blocks*adafs.block_size*8;
@@ -19,7 +18,9 @@ is
       n_blocks : Natural;
       start_block : Natural;
     end record;
+
   procedure Initialize (bmp : in out bitmap_singleton_t);
+
   procedure Finalize (bmp : in out bitmap_singleton_t);
   function get_bitmap return access bitmap_singleton_t;
 

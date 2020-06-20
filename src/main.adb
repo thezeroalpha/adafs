@@ -1,5 +1,6 @@
-with Ada.Text_IO;
-procedure main is
+with Ada.Text_IO; use Ada.Text_IO;
+procedure main
+is
 begin
-  ada.text_io.put_line("OK");
+    Put_Line("OK");
 end main;

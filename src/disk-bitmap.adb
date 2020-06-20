@@ -1,5 +1,4 @@
 package body disk.bitmap
-  with SPARK_Mode
 is
   procedure Initialize (bmp : in out bitmap_singleton_t) is
   begin

@@ -6,9 +6,7 @@ with adafs.filp;
 with adafs.inode;
 generic
   with package dsk is new disk (<>);
-package adafs.operations
-  with SPARK_Mode
-is
+package adafs.operations is
   package inode is new dsk.inode;
   package tio renames Ada.Text_IO;
   procedure init;

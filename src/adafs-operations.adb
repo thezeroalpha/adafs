@@ -1,6 +1,4 @@
-package body adafs.operations
-  with SPARK_Mode
-is
+package body adafs.operations is
   procedure init is
   begin
     for pid in proc.tab'Range loop

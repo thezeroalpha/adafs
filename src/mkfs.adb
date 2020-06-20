@@ -26,21 +26,13 @@ procedure mkfs is
     return nblocks;
   end bitmapsize_in_blocks;
 
-  -- FIXME: remove if not needed
-  num_inodes : Natural := dsk.n_inodes;
-  num_imap_blocks : Natural := bitmapsize_in_blocks(1+num_inodes);
-  num_zmap_blocks : Natural := bitmapsize_in_blocks(dsk.n_zones);
-  imap_start : Natural := adafs.imap_start;
-  zmap_start : Natural := imap_start+num_imap_blocks;
-  temp : Natural := 1;
-
   package inode_bitmap is new dsk.bitmap (
-    n_bitmap_blocks => num_imap_blocks,
-    start_block => imap_start);
+    n_bitmap_blocks => bitmapsize_in_blocks(1+dsk.n_inodes),
+    start_block => adafs.imap_start);
 
   package zone_bitmap is new dsk.bitmap (
-    n_bitmap_blocks => num_zmap_blocks,
-    start_block => zmap_start);
+    n_bitmap_blocks => bitmapsize_in_blocks(dsk.n_zones),
+    start_block => adafs.imap_start+bitmapsize_in_blocks(1+dsk.n_inodes));
 
   procedure write_bootblock is
     procedure write_boot is new dsk.write_block (adafs.boot.bootblock_t);

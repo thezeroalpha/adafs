@@ -1,5 +1,4 @@
 package body disk.inode
-  with SPARK_Mode
 is
   function get_inode (num : Natural) return in_mem is
     offset : Natural := 3+get_disk.super.imap_blocks+get_disk.super.zmap_blocks;
