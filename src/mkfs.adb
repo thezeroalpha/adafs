@@ -26,13 +26,21 @@ procedure mkfs is
     return nblocks;
   end bitmapsize_in_blocks;
 
+  -- FIXME: remove if not needed
+  num_inodes : Natural := dsk.n_inodes;
+  num_imap_blocks : Natural := bitmapsize_in_blocks(1+num_inodes);
+  num_zmap_blocks : Natural := bitmapsize_in_blocks(dsk.n_zones);
+  imap_start : Natural := adafs.imap_start;
+  zmap_start : Natural := imap_start+num_imap_blocks;
+  temp : Natural := 1;
+
   package inode_bitmap is new dsk.bitmap (
-    n_bitmap_blocks => bitmapsize_in_blocks(1+dsk.n_inodes),
-    start_block => 3);
+    n_bitmap_blocks => num_imap_blocks,
+    start_block => imap_start);
 
   package zone_bitmap is new dsk.bitmap (
-    n_bitmap_blocks => bitmapsize_in_blocks(dsk.n_zones),
-    start_block => inode_bitmap.get_start_block+inode_bitmap.size_in_blocks);
+    n_bitmap_blocks => num_zmap_blocks,
+    start_block => zmap_start);
 
   procedure write_bootblock is
     procedure write_boot is new dsk.write_block (adafs.boot.bootblock_t);
@@ -76,7 +84,6 @@ procedure mkfs is
     for i in 3..n_initblks loop
       dsk.zero_block (i);
     end loop;
-    -- write maps
     declare
       nl : Character := Character'Val(10);
     begin
@@ -128,8 +135,8 @@ procedure mkfs is
       return z;
     end alloc_zone;
 
-    root_inum : Positive := alloc_inode;
-    zone_num : Positive := alloc_zone;
+    root_inum : Positive;
+    zone_num : Positive;
 
     -- add zone z to inode n, the file has grown by 'grow_by_bytes' bytes
     procedure add_zone (inode_num : Positive; zone_num : Positive; grow_by_bytes : Positive) is
@@ -221,6 +228,10 @@ procedure mkfs is
     end incr_link;
 
   begin
+    inode_bitmap.clear_bitmap;
+    zone_bitmap.clear_bitmap;
+    root_inum := alloc_inode;
+    zone_num := alloc_zone;
     add_zone(root_inum, zone_num, 2*adafs.inode.direct'Size);
     enter_dir(root_inum, ".", root_inum);
     enter_dir(root_inum, "..", root_inum);

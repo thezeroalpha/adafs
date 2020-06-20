@@ -55,7 +55,9 @@ is
 
    procedure Finalize (disk : in out disk_t) is
    begin
-     sio.close(disk.acc.all);
+     if sio.is_open(stream_io_disk_ft) then
+       sio.close(stream_io_disk_ft);
+     end if;
      disk.filename := (others => adafs.nullchar);
      disk.acc := null;
      disk.super.magic := 0;

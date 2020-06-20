@@ -5,6 +5,8 @@ generic
 package disk
   with SPARK_Mode
 is
+  pragma Elaborate_Body (disk);
+
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;
 
