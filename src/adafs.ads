@@ -5,7 +5,13 @@ is
   bootblock_num : constant := 1;
   superblock_num : constant := 2;
   imap_start : constant := 3;
+
+  subtype name_t is String (1..14); -- limits.h, PATH_MAX
+  subtype path_t is String (1..255); -- limits.h, PATH_MAX
+
   type data_buf_t is array (Positive range <>) of Character;
+  type dir_buf_t is array (Positive range <>) of name_t;
+
   nullchar : Character := Character'Val(0);
   nlchar : Character := Character'Val(10);
   rchar : Character := Character'Val(13);

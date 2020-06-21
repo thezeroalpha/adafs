@@ -151,10 +151,27 @@ procedure test is
     fs.deinit;
   end test_seek;
 
+  procedure test_readdir is
+    fd : Natural;
+    fname : String := "newfile";
+  begin
+    fs.init;
+    header("readdir");
+    fd := fs.create("/"&fname, pid);
+    fs.close(fd, pid);
+    fd := fs.open("/", pid);
+    declare
+      data : adafs.dir_buf_t := fs.readdir(fd, pid);
+    begin
+      pragma assert(data(data'Last) = (fname & (1..adafs.name_t'Last-fname'Length => adafs.nullchar)));
+    end;
+    fs.deinit;
+  end test_readdir;
 begin
   test_open_close;
   test_create;
   test_write;
   test_readwrite;
   test_seek;
+  test_readdir;
 end test;

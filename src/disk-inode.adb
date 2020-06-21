@@ -87,7 +87,7 @@ is
     end;
   end inode_fpos_to_bnum;
 
-  function advance (inum : Natural; name : name_t) return Natural is
+  function advance (inum : Natural; name : adafs.name_t) return Natural is
     -- given directory inum and component of path, look up component in the directory, find inode, and return its num
     -- 1. get inode 'inum'
     dir_ino : in_mem := get_inode(inum);
@@ -122,8 +122,8 @@ is
   -- given 'path', parse it as far as last dir.
   -- fetch inode for that dir into inode table, return its index.
   -- the final component is in 'final'
-  function last_dir (path : path_t; procentry : adafs.proc.entry_t; final : out name_t) return Natural is
-    function parse_next (path : path_t; cursor : in out Positive) return String is
+  function last_dir (path : adafs.path_t; procentry : adafs.proc.entry_t; final : out adafs.name_t) return Natural is
+    function parse_next (path : adafs.path_t; cursor : in out Positive) return String is
       procedure skip_slashes is
       begin
         while path(cursor) = '/' and cursor+1 /= path'Last loop
@@ -156,13 +156,13 @@ is
     inum : Natural := (if path(1) = '/' then procentry.rootdir else procentry.workdir);
     new_inum : Natural;
     cursor : Natural range path'Range := path'First;
-    new_name : name_t;
+    new_name : adafs.name_t;
   begin
     loop
       declare
         nn : String := parse_next(path, cursor);
       begin
-        new_name := nn & (1..name_t'Last-nn'Length => Character'Val(0));
+        new_name := nn & (1..adafs.name_t'Last-nn'Length => Character'Val(0));
       end;
       if cursor = path'Last or path(cursor) = Character'Val(0) then
         -- if inode with inum is dir, normal exit
@@ -182,8 +182,8 @@ is
   end last_dir;
 
   -- parse 'path' and return its inode number. analogous to 'eat_path'
-  function path_to_inum (path : path_t; procentry : adafs.proc.entry_t) return Natural is
-    final_compt : name_t;
+  function path_to_inum (path : adafs.path_t; procentry : adafs.proc.entry_t) return Natural is
+    final_compt : adafs.name_t;
     ldir_inum : Natural := last_dir(path, procentry, final_compt);
   begin
     if ldir_inum = 0 then
@@ -396,7 +396,7 @@ is
    end if;
   end new_block;
 
-  procedure add_entry (dir_num : Natural; str : name_t; inum : Natural) is
+  procedure add_entry (dir_num : Natural; str : adafs.name_t; inum : Natural) is
     dir_ino : in_mem := get_inode(dir_num);
     pos : Natural := 1;
     bnum : Natural;
@@ -450,7 +450,7 @@ is
       tio.put_line("available direntry slot:" & free_slot'Image & ", dir inode" & dir_num'Image & ", block" & bnum'Image);
     end if;
 
-    dir_entry_blk(free_slot).name := str & (1..name_t'Last-str'Length => Character'Val(0));
+    dir_entry_blk(free_slot).name := str & (1..adafs.name_t'Last-str'Length => Character'Val(0));
     dir_entry_blk(free_slot).inode_num := inum;
     tio.put_line("entry added: " & str & " ->" & inum'Image);
     disk_write_dir_entry_block(bnum, dir_entry_blk);
@@ -467,8 +467,8 @@ is
   -- allocates new inode, creates entry for it at 'path', initializes it
   -- returns inode number, or 0 on error
   function new_inode (path_str : String; procentry : adafs.proc.entry_t) return Natural is
-    path : path_t := path_str  & (1..path_t'Last-path_str 'Length => Character'Val(0));
-    final_compt : name_t;
+    path : adafs.path_t := path_str  & (1..adafs.path_t'Last-path_str 'Length => Character'Val(0));
+    final_compt : adafs.name_t;
     ldir_inum : Natural := last_dir(path, procentry, final_compt);
     inum : Natural;
     ino : in_mem;
@@ -543,4 +543,24 @@ is
     data_buf(1..chunk) := data_block(offset_in_blk..offset_in_blk+chunk-1);
     return data_buf;
   end read_chunk;
+
+
+  function read_dir(ino : in_mem) return adafs.dir_buf_t is
+    function read_direntry_block is new read_block(dir_entry_block_t);
+    num_entries : Natural := ino.size/direct'Size;
+    dir_contents : adafs.dir_buf_t(1..num_entries);
+    direntry_block : dir_entry_block_t;
+    cur_entry : Positive := 1;
+  begin
+    for z of ino.zone loop
+      exit when z = 0;
+      direntry_block := read_direntry_block(z);
+      for e of direntry_block loop
+        exit when e.inode_num = 0;
+        dir_contents(cur_entry) := e.name;
+        cur_entry := cur_entry+1;
+      end loop;
+    end loop;
+    return dir_contents;
+  end read_dir;
 end disk.inode;

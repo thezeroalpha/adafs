@@ -5,6 +5,7 @@ package body adafs.operations is
         adafs.proc.init_entry(pid);
     end loop;
   end init;
+
   function open (path : String; pid : adafs.proc.tab_range) return adafs.filp.fd_t is
     procentry : adafs.proc.entry_t := adafs.proc.get_entry (pid); -- fproc entry for the specific process
     fd : adafs.filp.fd_t := adafs.filp.get_free_fd (procentry.open_filps);
@@ -13,7 +14,7 @@ package body adafs.operations is
   begin
     tio.put_line(Character'Val(10) & "** pid" & pid'Image & " opens " & path & " **");
     adafs.filp.get_free_filp(filp_slot_num);
-    inum := inode.path_to_inum (path & (1..adafs.inode.path_t'Last-path'Length => Character'Val(0)), procentry);
+    inum := inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
       tio.put_line ("couldn't open " & path);
       return filp.null_fd;
@@ -190,6 +191,30 @@ package body adafs.operations is
     filp.tab(filp_slot_num).pos := position;
     return data_buf;
   end read;
+
+
+  function readdir (fd : adafs.filp.fd_t; pid : adafs.proc.tab_range) return adafs.dir_buf_t is
+    procentry : proc.entry_t := proc.get_entry(pid);
+    filp_slot_num : filp.tab_num_t;
+    ino : adafs.inode.in_mem;
+    null_buf : adafs.dir_buf_t(2..1);
+    inum : Natural;
+  begin
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " reads dir at fd" & fd'Image & " **");
+    if fd = 0 then
+      tio.put_line("cannot read from null fd");
+      return null_buf;
+    end if;
+    filp_slot_num := procentry.open_filps(fd);
+    if filp_slot_num = 0 then
+      tio.put_line("cannot read, fd" & fd'Image & " refers to null filp slot");
+      return null_buf;
+    end if;
+    inum := filp.tab(filp_slot_num).ino;
+    ino := inode.get_inode(inum);
+
+    return inode.read_dir(ino);
+  end readdir;
 
   function lseek (fd : adafs.filp.fd_t; offset : Integer; whence : seek_whence_t; pid : adafs.proc.tab_range) return Natural is
     procentry : proc.entry_t := proc.get_entry(pid);

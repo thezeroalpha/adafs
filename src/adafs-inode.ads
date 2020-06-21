@@ -56,9 +56,6 @@ is
   no_entry : tab_num_t := 0;
   tab : tab_t;
 
-  subtype name_t is String (1..14); -- limits.h, PATH_MAX
-  subtype path_t is String (1..255); -- limits.h, PATH_MAX
-
 
   function calc_num_inodes_for_blocks (nblocks : Natural) return Natural
     with Global => (input => num_per_block),

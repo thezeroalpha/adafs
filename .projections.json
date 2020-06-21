@@ -1,4 +1,5 @@
 {
   "src/*.adb": {"alternate": "src/{}.ads"},
-  "src/*.ads": {"alternate": "src/{}.adb"}
+  "src/*.ads": {"alternate": "src/{}.adb"},
+  "test/test.adb": {"type": "test"}
 }

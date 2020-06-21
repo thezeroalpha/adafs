@@ -4,7 +4,7 @@ with adafs.proc;
 with disk.bitmap;
 generic
 package disk.inode is
-  function path_to_inum (path : path_t; procentry : adafs.proc.entry_t) return Natural;
+  function path_to_inum (path : adafs.path_t; procentry : adafs.proc.entry_t) return Natural;
   function new_inode (path_str : String; procentry : adafs.proc.entry_t) return Natural;
   function get_inode (num : Natural) return in_mem;
   procedure put_inode (ino : in_mem);
@@ -12,4 +12,5 @@ package disk.inode is
 
   procedure write_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : adafs.data_buf_t);
   function read_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural) return adafs.data_buf_t;
+  function read_dir(ino : in_mem) return adafs.dir_buf_t;
 end disk.inode;
