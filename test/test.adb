@@ -3,8 +3,7 @@ with adafs.operations, adafs.inode;
 with disk;
 with Ada.Text_IO;
 procedure test is
-  package dsk is new disk ("disk.img");
-  package fs is new adafs.operations (dsk);
+  package fs renames adafs.operations;
 
   pid : constant := 1;
   pos : Natural := 1;

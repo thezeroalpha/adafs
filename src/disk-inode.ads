@@ -2,7 +2,6 @@ with adafs.inode; use adafs.inode;
 with adafs; use type adafs.data_buf_t;
 with adafs.proc;
 with disk.bitmap;
-generic
 package disk.inode is
   function path_to_inum (path : adafs.path_t; procentry : adafs.proc.entry_t) return Natural;
   function new_inode (path_str : String; procentry : adafs.proc.entry_t) return Natural;

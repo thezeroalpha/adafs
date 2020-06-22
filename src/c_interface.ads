@@ -1,8 +1,7 @@
 with adafs.operations, disk, adafs.inode;
 with Interfaces.C.Strings;
 package c_interface is
-  package dsk is new disk("/home/zeroalpha/bsc/adafs/disk.img");
-  package fs is new adafs.operations(dsk);
+  package fs renames adafs.operations;
   package cstrings renames Interfaces.C.Strings;
   package c renames Interfaces.C;
 

@@ -1,11 +1,8 @@
 with Ada.Directories, Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Finalization;
 with adafs, adafs.inode, adafs.superblock;
-generic
-  filename_param : String;
-package disk
-is
+package disk is
   pragma Elaborate_Body (disk);
-
+  filename_param : constant String := "disk.img";
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;
 

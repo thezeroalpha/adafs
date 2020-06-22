@@ -66,6 +66,7 @@ is
 
    function get_disk return access disk_t is (disk'Access);
 
+
    procedure zero_block (blk : block_num) is
      type zero_block_arr is array (1..adafs.block_size) of Character;
      zero_blk : zero_block_arr := (others => adafs.nullchar);

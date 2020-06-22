@@ -14,7 +14,7 @@ package body adafs.operations is
   begin
     tio.put_line(Character'Val(10) & "** pid" & pid'Image & " opens " & path & " **");
     adafs.filp.get_free_filp(filp_slot_num);
-    inum := inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
+    inum := disk.inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
       tio.put_line ("couldn't open " & path);
       return filp.null_fd;
@@ -77,7 +77,7 @@ package body adafs.operations is
       tio.put_line("no free fd available");
       return filp.null_fd;
     end if;
-    inum := inode.new_inode (path, procentry);
+    inum := disk.inode.new_inode (path, procentry);
     tio.put_line("created inode" & inum'Image);
     if inum = 0 then
       tio.put_line("Could not create " & path);
@@ -117,29 +117,29 @@ package body adafs.operations is
     end if;
     position := filp.tab(filp_slot_num).pos;
     inum := filp.tab(filp_slot_num).ino;
-    ino := inode.get_inode(inum);
+    ino := disk.inode.get_inode(inum);
     fsize := ino.size;
-    if position > dsk.get_disk.super.max_size - num_bytes then
+    if position > disk.get_disk.super.max_size - num_bytes then
       tio.put_line("cannot write, file would be too large");
       return 0;
     end if;
     if position > fsize then
-      inode.clear_zone(ino, fsize);
+      disk.inode.clear_zone(ino, fsize);
     end if;
 
     -- split the transfer into chunks that don't span two blocks
     while nbytes /= 0 loop
       offset_in_blk := ((position-1) mod block_size)+1;
       chunk :=  (if nbytes < block_size-offset_in_blk then nbytes else block_size-offset_in_blk);
-      inode.write_chunk(ino, position, offset_in_blk, chunk, nbytes, data(data_cursor..data_cursor+chunk-1));
+      disk.inode.write_chunk(ino, position, offset_in_blk, chunk, nbytes, data(data_cursor..data_cursor+chunk-1));
       nbytes := nbytes - chunk;
       data_cursor := data_cursor+chunk;
       position := position + chunk;
     end loop;
     if position > fsize then
-      ino := inode.get_inode(inum);
+      ino := disk.inode.get_inode(inum);
       ino.size := position-1;
-      inode.put_inode(ino);
+      disk.inode.put_inode(ino);
     end if;
     filp.tab(filp_slot_num).pos := position;
     return num_bytes-nbytes;
@@ -169,7 +169,7 @@ package body adafs.operations is
     end if;
     position := filp.tab(filp_slot_num).pos;
     inum := filp.tab(filp_slot_num).ino;
-    ino := inode.get_inode(inum);
+    ino := disk.inode.get_inode(inum);
     fsize := ino.size;
 
     while nbytes /= 0 loop
@@ -183,7 +183,7 @@ package body adafs.operations is
           chunk := bytes_left;
         end if;
       end;
-      data_buf := inode.read_chunk(ino, position, offset_in_blk, chunk, nbytes);
+      data_buf := disk.inode.read_chunk(ino, position, offset_in_blk, chunk, nbytes);
       nbytes := nbytes - chunk;
       data_cursor := data_cursor+chunk-1;
       position := position + chunk;
@@ -201,13 +201,13 @@ package body adafs.operations is
   begin
     tio.put_line(Character'Val(10) & "** pid" & pid'Image & " reads dir at path" & path & " **");
 
-    inum := inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
+    inum := disk.inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
       tio.put_line ("couldn't open " & path);
       return null_buf;
     end if;
-    ino := inode.get_inode(inum);
-    return inode.read_dir(ino);
+    ino := disk.inode.get_inode(inum);
+    return disk.inode.read_dir(ino);
   end readdir;
 
   function lseek (fd : adafs.filp.fd_t; offset : Integer; whence : seek_whence_t; pid : adafs.proc.tab_range) return Natural is
@@ -233,7 +233,7 @@ package body adafs.operations is
       when SEEK_END =>
         declare
           inum : Natural := filp.tab(filp_slot_num).ino;
-          ino : adafs.inode.in_mem := inode.get_inode(inum);
+          ino : adafs.inode.in_mem := disk.inode.get_inode(inum);
         begin
           pos := ino.size;
         end;
@@ -260,12 +260,12 @@ package body adafs.operations is
     ino : adafs.inode.in_mem;
   begin
     tio.put_line(Character'Val(10) & "** pid" & pid'Image & " gets attributes of " & path & " **");
-    inum := inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
+    inum := disk.inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
       tio.put_line ("couldn't open " & path);
       return (size => 0, nlinks => 0);
     end if;
-    ino := inode.get_inode(inum);
+    ino := disk.inode.get_inode(inum);
     return (size => ino.size, nlinks => ino.nlinks);
   end getattr;
 

@@ -8,7 +8,6 @@ with adafs.inode;
 procedure mkfs is
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;
-  package dsk is new disk ("disk.img");
   super : adafs.superblock.superblock_t;
   for super'Size use adafs.block_size;
 
@@ -26,16 +25,16 @@ procedure mkfs is
     return nblocks;
   end bitmapsize_in_blocks;
 
-  package inode_bitmap is new dsk.bitmap (
-    n_bitmap_blocks => bitmapsize_in_blocks(1+dsk.n_inodes),
+  package inode_bitmap is new disk.bitmap (
+    n_bitmap_blocks => bitmapsize_in_blocks(1+disk.n_inodes),
     start_block => adafs.imap_start);
 
-  package zone_bitmap is new dsk.bitmap (
-    n_bitmap_blocks => bitmapsize_in_blocks(dsk.n_zones),
-    start_block => adafs.imap_start+bitmapsize_in_blocks(1+dsk.n_inodes));
+  package zone_bitmap is new disk.bitmap (
+    n_bitmap_blocks => bitmapsize_in_blocks(disk.n_zones),
+    start_block => adafs.imap_start+bitmapsize_in_blocks(1+disk.n_inodes));
 
   procedure write_bootblock is
-    procedure write_boot is new dsk.write_block (adafs.boot.bootblock_t);
+    procedure write_boot is new disk.write_block (adafs.boot.bootblock_t);
     bootblock : adafs.boot.bootblock_t := (
       adafs.boot.bootblock_t'Last-2 => "....",
       adafs.boot.bootblock_t'Last-1 => "ENDS",
@@ -47,34 +46,30 @@ procedure mkfs is
   end write_bootblock;
 
   procedure write_superblock (next_datazone, next_inode, zoff, inode_offset : out Natural) is
-    procedure diskwrite_superblock is new dsk.write_block (adafs.superblock.superblock_t);
+    procedure diskwrite_superblock is new disk.write_block (adafs.superblock.superblock_t);
     n_initblks : Natural;
   begin
     -- Set "global" values
     inode_offset := inode_bitmap.size_in_blocks + zone_bitmap.size_in_blocks + 3;
-    n_initblks := (inode_offset) + (((dsk.n_inodes + adafs.inode.num_per_block - 1)/adafs.inode.num_per_block));
+    n_initblks := (inode_offset) + (((disk.n_inodes + adafs.inode.num_per_block - 1)/adafs.inode.num_per_block));
     zoff := n_initblks-1;
     next_datazone := n_initblks;
     next_inode := 1;
 
-    super.n_inodes := dsk.n_inodes;
-    super.zones := dsk.n_zones;
+    super.n_inodes := disk.n_inodes;
+    super.zones := disk.n_zones;
     super.imap_blocks := inode_bitmap.size_in_blocks;
     super.zmap_blocks := zone_bitmap.size_in_blocks;
     super.first_data_zone := n_initblks;
     super.log_zone_size := 0;
     super.magic := 16#2468#;
-    declare
-      package inode is new dsk.inode;
-    begin
-      super.max_size := adafs.inode.max_file_size;
-    end;
+    super.max_size := adafs.inode.max_file_size;
 
     diskwrite_superblock (adafs.superblock_num, super);
 
     -- clear maps and inodes
     for i in 3..n_initblks loop
-      dsk.zero_block (i);
+      disk.zero_block (i);
     end loop;
     declare
       nl : Character := Character'Val(10);
@@ -87,7 +82,7 @@ procedure mkfs is
         & "- inodes:" & super.n_inodes'Image &nl
         & "- inodes per block:" & adafs.inode.num_per_block'Image &nl
         & "- inodes start at block:" & inode_offset'Image &nl
-        & "- inode blocks:" & Natural'(((dsk.n_inodes + adafs.inode.num_per_block-1)/adafs.inode.num_per_block))'Image &nl
+        & "- inode blocks:" & Natural'(((disk.n_inodes + adafs.inode.num_per_block-1)/adafs.inode.num_per_block))'Image &nl
         & "- first data zone:" & super.first_data_zone'Image &nl
         & "- num init blocks:" & n_initblks'Image &nl
         & "- max fsize:" & super.max_size'Image & " bytes" &nl
@@ -97,9 +92,8 @@ procedure mkfs is
   end write_superblock;
 
   procedure create_rootdir (next_datazone, next_inode : in out Natural; zoff, inode_offset : in Natural) is
-    package inode is new dsk.inode;
-    function read_inode_block is new dsk.read_block (adafs.inode.inode_block_t);
-    procedure write_inode_block is new dsk.write_block (adafs.inode.inode_block_t);
+    function read_inode_block is new disk.read_block (adafs.inode.inode_block_t);
+    procedure write_inode_block is new disk.write_block (adafs.inode.inode_block_t);
 
     function alloc_inode return Positive is
       num : Positive := next_inode;
@@ -120,7 +114,7 @@ procedure mkfs is
       b : Positive := z;
     begin
       for i in 1..adafs.inode.zone_size loop
-        dsk.zero_block(b+i-1);
+        disk.zero_block(b+i-1);
       end loop;
       zone_bitmap.set_bit(z-zoff, 1);
       next_datazone := next_datazone+1;
@@ -136,8 +130,8 @@ procedure mkfs is
       offset : Natural := ((inode_num-1) mod adafs.inode.num_per_block)+1;
       inode_block : adafs.inode.inode_block_t;
       zone_block : adafs.inode.zone_block_t;
-      function read_zone_block is new dsk.read_block (adafs.inode.zone_block_t);
-      procedure write_zone_block is new dsk.write_block (adafs.inode.zone_block_t);
+      function read_zone_block is new disk.read_block (adafs.inode.zone_block_t);
+      procedure write_zone_block is new disk.write_block (adafs.inode.zone_block_t);
       ino : adafs.inode.on_disk;
       indir : Natural;
     begin
@@ -178,8 +172,8 @@ procedure mkfs is
       offset : Natural := ((parent_inum-1) mod adafs.inode.num_per_block)+1;
       inode_block : adafs.inode.inode_block_t;
 
-      function read_dir_entry_block is new dsk.read_block (adafs.inode.dir_entry_block_t);
-      procedure write_dir_entry_block is new dsk.write_block (adafs.inode.dir_entry_block_t);
+      function read_dir_entry_block is new disk.read_block (adafs.inode.dir_entry_block_t);
+      procedure write_dir_entry_block is new disk.write_block (adafs.inode.dir_entry_block_t);
       dir_block : adafs.inode.dir_entry_block_t;
 
       nr_dir_entries : Natural := adafs.block_size/adafs.inode.direct'Size;
@@ -235,13 +229,13 @@ procedure mkfs is
   zoff, next_datazone, next_inode, inode_offset : Natural;
 begin
   tio.Put_Line ("== MKFS-ADAFS ==");
-  tio.Put_Line ("disk: " & dsk.get_disk.filename);
-  dsk.zero_disk;
+  tio.Put_Line ("disk: " & disk.get_disk.filename);
+  disk.zero_disk;
   tio.Put_Line ("zeroed successfully");
-  tio.Put_Line ("size:" & dsk.size_bytes'Image & " B," & Natural'(dsk.size_bytes/1E3)'Image & " KB," & Natural'(dsk.size_bytes/1E6)'Image & " GB," & dsk.size_in_bits'Image & " bits");
-  tio.Put_Line ("blocks:" & dsk.size_blocks'Image);
+  tio.Put_Line ("size:" & disk.size_bytes'Image & " B," & Natural'(disk.size_bytes/1E3)'Image & " KB," & Natural'(disk.size_bytes/1E6)'Image & " GB," & disk.size_in_bits'Image & " bits");
+  tio.Put_Line ("blocks:" & disk.size_blocks'Image);
   write_bootblock;
   write_superblock (next_datazone, next_inode, zoff, inode_offset);
   create_rootdir (next_datazone, next_inode, zoff, inode_offset);
-  tio.put_line ("adafs created on " & dsk.get_disk.filename);
+  tio.put_line ("adafs created on " & disk.get_disk.filename);
 end mkfs;
