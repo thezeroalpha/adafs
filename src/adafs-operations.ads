@@ -17,6 +17,7 @@ package adafs.operations is
   function write (fd : adafs.filp.fd_t; num_bytes : Natural; data : adafs.data_buf_t; pid : adafs.proc.tab_range) return Natural;
   function read (fd : adafs.filp.fd_t; num_bytes : Natural; pid : adafs.proc.tab_range) return adafs.data_buf_t;
   function readdir (fd : adafs.filp.fd_t; pid : adafs.proc.tab_range) return adafs.dir_buf_t;
+  function getattr (path : String; pid : adafs.proc.tab_range) return adafs.inode.attrs_t;
 
   type seek_whence_t is (SEEK_SET, SEEK_CUR, SEEK_END);
   function lseek (fd : adafs.filp.fd_t; offset : Integer; whence : seek_whence_t; pid : adafs.proc.tab_range) return Natural;

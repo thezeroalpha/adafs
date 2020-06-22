@@ -198,7 +198,7 @@ procedure mkfs is
           for k in 1..nr_dir_entries loop
             if dir_block(k).inode_num = 0 then
               dir_block(k).inode_num := child_inum;
-              dir_block(k).name := name & (1..14-name'Length => Character'Val(0));
+              dir_block(k).name := name & (1..adafs.name_t'Last-name'Length => Character'Val(0));
               write_dir_entry_block (zone_num+j-1, dir_block);
               write_inode_block (block_num, inode_block);
               tio.put_line("wrote dir '" & name & "' to block" & Natural'(zone_num+j-1)'Image & " (zone" & zone_num'Image & ")");

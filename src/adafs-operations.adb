@@ -258,4 +258,22 @@ package body adafs.operations is
     filp.tab(filp_slot_num).pos := pos;
     return pos;
   end lseek;
+
+
+  function getattr (path : String; pid : adafs.proc.tab_range) return adafs.inode.attrs_t is
+    procentry : adafs.proc.entry_t := adafs.proc.get_entry (pid); -- fproc entry for the specific process
+    inum : Natural;
+    ino : adafs.inode.in_mem;
+  begin
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " gets attributes of " & path & " **");
+    inum := inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
+    if inum = 0 then
+      tio.put_line ("couldn't open " & path);
+      return (size => 0, nlinks => 0);
+    end if;
+    ino := inode.get_inode(inum);
+    return (size => ino.size, nlinks => ino.nlinks);
+  end getattr;
+
+
 end adafs.operations;

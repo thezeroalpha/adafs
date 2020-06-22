@@ -4,17 +4,17 @@ project AdaFS is
   for Languages use ("Ada", "C");
   for Object_Dir use "obj/";
   for Exec_Dir use "dist/";
-  for Main use ("main.adb", "mkfs.adb", "test.adb");
+  for Main use ("mkfs.adb", "test.adb", "fuse_driver.c");
 
   package Builder is
-    for Executable ("main.adb") use "adafs";
     for Executable ("mkfs.adb") use "mkfs";
     for Executable ("test.adb") use "test";
+    for Executable ("fuse_driver.c") use "fuse";
   end Builder;
 
   package Compiler is
     for Local_Configuration_Pragmas use "pragmas.adc";
-    for Default_Switches("C") use external_as_list ("FUSE_LIB", " ");
+    for Default_Switches("C") use ("-g", "-Wall", "-Werror") & external_as_list ("FUSE_LIB", " ");
     for Default_Switches("Ada") use ("-g");
   end Compiler;
   package Linker is

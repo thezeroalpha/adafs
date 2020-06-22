@@ -1,0 +1,82 @@
+#define FUSE_USE_VERSION 31
+#include <fuse.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+
+struct ada_attrs_t {
+  int size;
+  int nlinks;
+};
+
+extern void adainit (void);
+extern void adafinal (void);
+extern struct ada_attrs_t ada_getattr(const char *path, pid_t pid);
+extern void ada_fsinit (void);
+extern void ada_fsdeinit (void);
+
+void *myfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
+  adainit();
+  ada_fsinit();
+  return NULL;
+}
+void myfs_destroy(void *private_data) {
+  ada_fsdeinit();
+  adafinal();
+}
+
+int myfs_getattr(const char *path, struct stat *st, struct fuse_file_info *finfo)
+{
+  struct fuse_context *context = fuse_get_context();
+  pid_t pid = context->pid;
+
+  if (path[strlen(path)-1] == '/') {
+    st->st_mode = S_IFDIR | 0755; // access rights and directory type
+  } else {
+    st->st_mode = S_IFREG | 0644; // access rights and regular file type
+  }
+
+  struct ada_attrs_t ada_attrs = ada_getattr(path, pid);
+  if (ada_attrs.nlinks == 0) return -ENOENT;
+
+  st->st_nlink = ada_attrs.nlinks;             // number of hard links, for directories this is at least 2
+  st->st_size = ada_attrs.size;           // file size
+  // user and group. we use the user's id who is executing the FUSE driver
+  st->st_uid = getuid();
+  st->st_gid = getgid();
+  return 0;
+}
+
+int myfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+{
+  filler(buffer, ".", NULL, 0, 0);       // current directory reference
+  filler(buffer, "..", NULL, 0, 0);      // parent directory reference
+  filler(buffer, "newfile", NULL, 0, 0); // any filename at path in your image
+  return 0;
+}
+
+static struct fuse_operations myfs_ops = {
+  .init = myfs_init,
+  .getattr = myfs_getattr,
+  .readdir = myfs_readdir,
+  .destroy = myfs_destroy
+};
+
+char *devfile = NULL;
+
+int main(int argc, char **argv)
+{
+  int i;
+
+  // get the device or image filename from arguments
+  for (i = 1; i < argc && argv[i][0] == '-'; i++);
+  if (i < argc) {
+    devfile = realpath(argv[i], NULL);
+    memcpy(&argv[i], &argv[i+1], (argc-i) * sizeof(argv[0]));
+    argc--;
+  }
+  // leave the rest to FUSE
+  return fuse_main(argc, argv, &myfs_ops, NULL);
+}

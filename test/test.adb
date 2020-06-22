@@ -1,5 +1,5 @@
 pragma Assertion_Policy (Assert => Check);
-with adafs.operations;
+with adafs.operations, adafs.inode;
 with disk;
 with Ada.Text_IO;
 procedure test is
@@ -167,6 +167,17 @@ procedure test is
     end;
     fs.deinit;
   end test_readdir;
+
+  procedure test_getattr is
+    attrs : adafs.inode.attrs_t;
+  begin
+    fs.init;
+    header("getattr");
+    attrs := fs.getattr("/.nonexistent", pid);
+    pragma assert(attrs.size = 0);
+    fs.deinit;
+  end test_getattr;
+
 begin
   test_open_close;
   test_create;
@@ -174,4 +185,5 @@ begin
   test_readwrite;
   test_seek;
   test_readdir;
+  test_getattr;
 end test;

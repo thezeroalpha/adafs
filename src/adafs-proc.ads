@@ -6,7 +6,7 @@ package adafs.proc
 is
   package tio renames Ada.Text_IO;
 
-  nr_procs : constant := 32;
+  nr_procs : constant := 4194304; -- /proc/sys/kernel/pid_max
   type entry_t (is_null : Boolean := False) is record
     case is_null is
       when True => null;

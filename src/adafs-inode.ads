@@ -8,6 +8,11 @@ is
   n_indirects_in_block : constant := block_size/(Natural'Size/8); -- actually 'num zones per indirect block'
   max_file_size : constant := n_direct_zones + n_indirects_in_block + (n_indirects_in_block * n_indirects_in_block);
 
+  type attrs_t is record
+    size : Natural;
+    nlinks : Natural;
+  end record;
+
   type zone_array is array (1..n_total_zones) of Natural;
 
   -- inode types
@@ -36,7 +41,7 @@ is
   -- directory entries
   type direct is record
     inode_num : Natural;
-    name : String(1..14); -- 14 == DIRSIZ
+    name : name_t;
   end record;
 
 

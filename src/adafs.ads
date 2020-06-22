@@ -6,7 +6,7 @@ is
   superblock_num : constant := 2;
   imap_start : constant := 3;
 
-  subtype name_t is String (1..14); -- limits.h, PATH_MAX
+  subtype name_t is String (1..20);
   subtype path_t is String (1..255); -- limits.h, PATH_MAX
 
   type data_buf_t is array (Positive range <>) of Character;
