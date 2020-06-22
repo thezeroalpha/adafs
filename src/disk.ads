@@ -26,11 +26,7 @@ package disk is
   n_inodes : Natural := adafs.inode.calc_num_inodes_for_blocks (size_blocks);
   n_zones : Natural := size_blocks;
 
-   function block2pos (num : block_num) return file_position is (((num-1)*1024)+1) with
-     SPARK_Mode => On,
-     Global => null,
-     Depends => (block2pos'Result => num),
-     Post => (block2pos'Result = 3);
+   function block2pos (num : block_num) return file_position is (((num-1)*1024)+1);
 
   function pos2block (pos : file_position) return block_num is ((pos/adafs.block_size)+1);
 
