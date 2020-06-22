@@ -2,7 +2,7 @@ with Ada.Directories, Ada.Streams.Stream_IO, Ada.Text_IO, Ada.Finalization;
 with adafs, adafs.inode, adafs.superblock;
 package disk is
   pragma Elaborate_Body (disk);
-  filename_param : constant String := "disk.img";
+  filename_param : constant String := "/home/zeroalpha/bsc/adafs/disk.img";
   package sio renames Ada.Streams.Stream_IO;
   package tio renames Ada.Text_IO;
 

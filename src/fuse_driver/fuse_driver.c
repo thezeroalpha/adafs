@@ -13,10 +13,12 @@ struct ada_attrs_t {
 
 extern void adainit (void);
 extern void adafinal (void);
-extern struct ada_attrs_t ada_getattr(const char *path, pid_t pid);
-extern void ada_readdir(const char *path, char *contents[], int size, pid_t pid);
 extern void ada_fsinit (void);
 extern void ada_fsdeinit (void);
+
+extern struct ada_attrs_t ada_getattr(const char *path, pid_t pid);
+extern void ada_readdir(const char *path, char *contents[], int size, pid_t pid);
+extern int ada_create(const char *path, pid_t pid);
 
 void *myfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
   adainit();
@@ -63,10 +65,19 @@ int myfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t o
   return 0;
 }
 
+int myfs_create(const char *path, mode_t mode, struct fuse_file_info *finfo) {
+  pid_t pid = fuse_get_context()->pid;
+  int fd = ada_create(path, pid);
+  if (fd == 0) return -EEXIST;
+  finfo->fh = fd;
+  return 0;
+}
+
 static struct fuse_operations myfs_ops = {
   .init = myfs_init,
   .getattr = myfs_getattr,
   .readdir = myfs_readdir,
+  .create = myfs_create,
   .destroy = myfs_destroy
 };
 

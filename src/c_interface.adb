@@ -22,4 +22,10 @@ package body c_interface is
   procedure fsdeinit is begin
     fs.deinit;
   end fsdeinit;
+
+  function ada_create(path : cstrings.chars_ptr; pid : c.int) return c.int is
+  begin
+    return c.int(fs.create(cstrings.value(path), Integer(pid)));
+  end ada_create;
+
 end c_interface;

@@ -30,4 +30,9 @@ package c_interface is
     Convention => C,
     External_Name => "ada_readdir";
 
+  function ada_create(path : cstrings.chars_ptr; pid : c.int) return c.int with
+    Export => True,
+    Convention => C,
+    External_Name => "ada_create";
+
 end c_interface;
