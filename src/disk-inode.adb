@@ -456,6 +456,7 @@ is
     disk_write_dir_entry_block(bnum, dir_entry_blk);
     if new_slots > old_slots then
       dir_ino.size := new_slots * direct'Size;
+      dir_ino.nlinks := dir_ino.nlinks+1;
       put_inode(dir_ino);
       if extended then
         tio.put_line("dir was extended, writing dir inode" & dir_ino.num'Image & " to disk");

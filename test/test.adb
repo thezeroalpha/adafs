@@ -159,9 +159,8 @@ procedure test is
     header("readdir");
     fd := fs.create("/"&fname, pid);
     fs.close(fd, pid);
-    fd := fs.open("/", pid);
     declare
-      data : adafs.dir_buf_t := fs.readdir(fd, pid);
+      data : adafs.dir_buf_t := fs.readdir("/", pid);
     begin
       pragma assert(data(data'Last) = (fname & (1..adafs.name_t'Last-fname'Length => adafs.nullchar)));
     end;

@@ -25,4 +25,10 @@ package c_interface is
     Export => True,
     Convention => C,
     External_Name => "ada_getattr";
+
+  procedure ada_readdir(path : cstrings.chars_ptr; fuse_contents : in out cstrings.chars_ptr_array; size : Natural; pid : c.int) with
+    Export => True,
+    Convention => C,
+    External_Name => "ada_readdir";
+
 end c_interface;

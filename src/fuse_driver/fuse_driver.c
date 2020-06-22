@@ -14,6 +14,7 @@ struct ada_attrs_t {
 extern void adainit (void);
 extern void adafinal (void);
 extern struct ada_attrs_t ada_getattr(const char *path, pid_t pid);
+extern void ada_readdir(const char *path, char *contents[], int size, pid_t pid);
 extern void ada_fsinit (void);
 extern void ada_fsdeinit (void);
 
@@ -29,8 +30,7 @@ void myfs_destroy(void *private_data) {
 
 int myfs_getattr(const char *path, struct stat *st, struct fuse_file_info *finfo)
 {
-  struct fuse_context *context = fuse_get_context();
-  pid_t pid = context->pid;
+  pid_t pid = fuse_get_context()->pid;
 
   if (path[strlen(path)-1] == '/') {
     st->st_mode = S_IFDIR | 0755; // access rights and directory type
@@ -51,9 +51,15 @@ int myfs_getattr(const char *path, struct stat *st, struct fuse_file_info *finfo
 
 int myfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
 {
-  filler(buffer, ".", NULL, 0, 0);       // current directory reference
-  filler(buffer, "..", NULL, 0, 0);      // parent directory reference
-  filler(buffer, "newfile", NULL, 0, 0); // any filename at path in your image
+  pid_t pid = fuse_get_context()->pid;
+  struct ada_attrs_t ada_attrs = ada_getattr(path, pid);
+  if (ada_attrs.nlinks == 0) return -ENOENT;
+
+  char *dir_contents[ada_attrs.nlinks];
+  ada_readdir(path, dir_contents, ada_attrs.nlinks, pid);
+
+  for (int i=0; i < ada_attrs.nlinks; i++)
+    filler(buffer, dir_contents[i], NULL, 0, 0);
   return 0;
 }
 
