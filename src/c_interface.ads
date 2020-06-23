@@ -40,9 +40,19 @@ package c_interface is
     Convention => C,
     External_Name => "ada_open";
 
+  procedure ada_close(fd : c.int; pid : c.int) with
+    Export => True,
+    Convention => C,
+    External_Name => "ada_close";
+
   function ada_read(fd : c.int; nbytes : c.size_t; offset : c.int; buf : cstrings.chars_ptr; pid : c.int) return c.int with
     Export => True,
     Convention => C,
     External_Name => "ada_read";
+
+  function ada_write(fd : c.int; nbytes : c.size_t; offset : c.int; buf : cstrings.chars_ptr; pid : c.int) return c.int with
+    Export => True,
+    Convention => C,
+    External_Name => "ada_write";
 
 end c_interface;

@@ -59,6 +59,7 @@ package body adafs.operations is
     filp_slot_num := procentry.open_filps(fd);
     if filp_slot_num = 0 then
       tio.put_line("cannot close fd" & fd'Image & ", is not open");
+      return;
     end if;
     filp.tab(filp_slot_num).count := filp.tab(filp_slot_num).count-1;
     procentry.open_filps(fd) := 0;
