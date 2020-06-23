@@ -23,6 +23,7 @@ extern int ada_open(const char *path, pid_t pid);
 extern void ada_close(int fd, pid_t pid);
 extern int ada_read(int fd, size_t nbytes, off_t offset, char *buf, pid_t pid);
 extern int ada_write(int fd, size_t nbytes, off_t offset, const char *buf, pid_t pid);
+extern void ada_unlink(const char *path, pid_t pid, int isdir);
 
 void *myfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
   adainit();
@@ -105,6 +106,19 @@ int myfs_write(const char *path, const char *buf, size_t nbytes, off_t offset, s
   int bytes_written = ada_write(fd, nbytes, offset, buf, pid);
   return bytes_written;
 }
+
+int myfs_unlink(const char *path) {
+  pid_t pid = fuse_get_context()->pid;
+  ada_unlink(path, pid, 0);
+  return 0;
+}
+
+int myfs_rmdir(const char *path) {
+  pid_t pid = fuse_get_context()->pid;
+  ada_unlink(path, pid, 1);
+  return 0;
+}
+
 static struct fuse_operations myfs_ops = {
   .init = myfs_init,
   .getattr = myfs_getattr,
@@ -114,6 +128,8 @@ static struct fuse_operations myfs_ops = {
   .release = myfs_release,
   .read = myfs_read,
   .write = myfs_write,
+  .unlink = myfs_unlink,
+  .rmdir = myfs_rmdir,
   .destroy = myfs_destroy
 };
 

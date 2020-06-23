@@ -11,6 +11,7 @@ package adafs.operations is
   function open (path : String; pid : adafs.proc.tab_range) return adafs.filp.fd_t;
   procedure close (fd : adafs.filp.fd_t; pid : adafs.proc.tab_range);
   function create (path : String; pid : adafs.proc.tab_range) return adafs.filp.fd_t;
+  procedure unlink (path : String; pid : adafs.proc.tab_range; isdir : Boolean := False);
   function write (fd : adafs.filp.fd_t; num_bytes : Natural; data : adafs.data_buf_t; pid : adafs.proc.tab_range) return Natural;
   function read (fd : adafs.filp.fd_t; num_bytes : Natural; pid : adafs.proc.tab_range) return adafs.data_buf_t;
   function readdir (path : String; pid : adafs.proc.tab_range) return adafs.dir_buf_t;

@@ -225,6 +225,15 @@ is
     return imap_bit_num;
   end alloc_inode;
 
+  procedure free_inode (ino : in_mem) is
+    package imap is new disk.bitmap (
+    n_bitmap_blocks => get_disk.super.imap_blocks,
+    start_block => adafs.imap_start);
+  begin
+    imap.set_bit(ino.num, 0);
+  end free_inode;
+
+
   function alloc_zone (nearby_zone : Natural) return Natural is
     package imap is new bitmap (
       n_bitmap_blocks => get_disk.super.imap_blocks,
@@ -557,11 +566,82 @@ is
       exit when z = 0;
       direntry_block := read_direntry_block(z);
       for e of direntry_block loop
-        exit when e.inode_num = 0;
-        dir_contents(cur_entry) := e.name;
-        cur_entry := cur_entry+1;
+        if e.inode_num /= 0 then
+          dir_contents(cur_entry) := e.name;
+          cur_entry := cur_entry+1;
+        end if;
       end loop;
     end loop;
     return dir_contents;
   end read_dir;
+
+  procedure unlink_file (path_str : String; procentry : adafs.proc.entry_t) is
+    path : adafs.path_t := path_str  & (1..adafs.path_t'Last-path_str 'Length => Character'Val(0));
+    final_compt : adafs.name_t;
+    parent_inum : Natural := last_dir(path, procentry, final_compt);
+    inum : Natural;
+
+    pos : Natural := 1;
+    bnum : Natural;
+    hit,extended : Boolean := False;
+    dir_ino, entry_ino : in_mem;
+    old_slots : Natural;
+    new_slots : Natural := 0;
+    free_slot : Natural;
+    dir_entry_blk : dir_entry_block_t;
+
+    function disk_read_dir_entry_block is new read_block(dir_entry_block_t);
+    procedure disk_write_dir_entry_block is new write_block(dir_entry_block_t);
+  begin
+    if parent_inum = 0 then -- last directory does not exist
+      return;
+    end if;
+    dir_ino := get_inode(parent_inum);
+    old_slots := dir_ino.size/direct'Size;
+
+    -- final dir is accessible, step into the last component
+    inum := advance(parent_inum, final_compt);
+    if inum = 0 or inum = 1 then -- final component does not exist or is root dir
+      return;
+    end if;
+
+    while pos <= dir_ino.size loop
+      bnum := inode_fpos_to_bnum(dir_ino, pos);
+      dir_entry_blk := disk_read_dir_entry_block(bnum);
+
+      for dp in dir_entry_blk'Range loop
+        new_slots := new_slots+1;
+        if new_slots > old_slots then -- not found, but room left in dir
+          exit;
+        end if;
+
+        if dir_entry_blk(dp).inode_num /= 0 and dir_entry_blk(dp).name = final_compt then
+          free_slot := dp;
+          hit := True;
+        end if;
+        if hit then
+          entry_ino := get_inode(dir_entry_blk(dp).inode_num);
+          entry_ino.nlinks := entry_ino.nlinks-1;
+          if entry_ino.nlinks = 0 then
+            free_inode(entry_ino);
+          end if;
+          put_inode(entry_ino);
+          dir_entry_blk(dp).inode_num := 0;
+          disk_write_dir_entry_block(bnum, dir_entry_blk);
+          exit;
+        end if;
+      end loop;
+      exit when hit;
+      pos := pos + adafs.block_size;
+    end loop;
+
+    if hit then
+      dir_ino.nlinks := dir_ino.nlinks-1;
+      dir_ino.size := dir_ino.size-direct'Size;
+      put_inode(dir_ino);
+    end if;
+  end unlink_file;
+
+  --  procedure remove_dir (path_str : adafs.path_t; procentry : adafs.proc.entry_t);
+
 end disk.inode;

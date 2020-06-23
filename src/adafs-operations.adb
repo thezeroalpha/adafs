@@ -271,4 +271,16 @@ package body adafs.operations is
   end getattr;
 
 
+  procedure unlink (path : String; pid : adafs.proc.tab_range; isdir : Boolean := False) is
+    procentry : adafs.proc.entry_t := adafs.proc.get_entry(pid);
+  begin
+    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " unlinks " & path & " **");
+    if not isdir then
+      disk.inode.unlink_file(path, procentry);
+    else
+      tio.put_line("Remove dir not implemented yet.");
+      --  disk.inode.remove_dir(path, procentry);
+    end if;
+  end unlink;
+
 end adafs.operations;

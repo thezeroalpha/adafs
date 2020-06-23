@@ -55,4 +55,9 @@ package c_interface is
     Convention => C,
     External_Name => "ada_write";
 
+  procedure ada_unlink(path : cstrings.chars_ptr; pid, isdir : c.int) with
+    Export => True,
+    Convention => C,
+    External_Name => "ada_unlink";
+
 end c_interface;

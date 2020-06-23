@@ -6,6 +6,8 @@ package disk.inode is
   function path_to_inum (path : adafs.path_t; procentry : adafs.proc.entry_t) return Natural;
   function new_inode (path_str : String; procentry : adafs.proc.entry_t) return Natural;
   function get_inode (num : Natural) return in_mem;
+  procedure unlink_file (path_str : String; procentry : adafs.proc.entry_t);
+  --  procedure remove_dir (path_str : String; procentry : adafs.proc.entry_t);
   procedure put_inode (ino : in_mem);
   procedure clear_zone (ino : in_mem; pos : Natural);
 

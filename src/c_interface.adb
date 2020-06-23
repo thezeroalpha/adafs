@@ -62,4 +62,9 @@ package body c_interface is
     return c.int(fs.write(fs_fd, fs_nbytes, contents, fs_pid));
   end ada_write;
 
+  procedure ada_unlink(path : cstrings.chars_ptr; pid, isdir : c.int) is
+    isdir_bool : Boolean := (if Natural(isdir) > 0 then True else False);
+  begin
+    fs.unlink(cstrings.value(path), Integer(pid), isdir_bool);
+  end ada_unlink;
 end c_interface;

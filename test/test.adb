@@ -176,6 +176,23 @@ procedure test is
     fs.deinit;
   end test_getattr;
 
+  procedure test_unlink is
+    fname : String := "toremove";
+    fd : Natural;
+  begin
+    fs.init;
+    header("unlink");
+    fd := fs.create("/"&fname, pid);
+    pragma assert(fd = 1);
+    fs.close(fd, pid);
+    fs.unlink("/"&fname, pid);
+    fd := fs.open("/"&fname, pid);
+    pragma assert(fd = 0, "File should not exist");
+    fd := fs.create("/"&fname, pid);
+    pragma assert(fd = 1, "File should exist again.");
+    fs.deinit;
+  end test_unlink;
+
 begin
   test_open_close;
   test_create;
@@ -184,4 +201,5 @@ begin
   test_seek;
   test_readdir;
   test_getattr;
+  test_unlink;
 end test;
