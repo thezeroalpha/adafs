@@ -19,6 +19,8 @@ extern void ada_fsdeinit (void);
 extern struct ada_attrs_t ada_getattr(const char *path, pid_t pid);
 extern void ada_readdir(const char *path, char *contents[], int size, pid_t pid);
 extern int ada_create(const char *path, pid_t pid);
+extern int ada_open(const char *path, pid_t pid);
+extern int ada_read(int fd, size_t nbytes, off_t offset, char *buf, pid_t pid);
 
 void *myfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
   adainit();
@@ -73,11 +75,27 @@ int myfs_create(const char *path, mode_t mode, struct fuse_file_info *finfo) {
   return 0;
 }
 
+int myfs_open(const char *path, struct fuse_file_info *finfo) {
+  pid_t pid = fuse_get_context()->pid;
+  int fd = ada_open(path, pid);
+  finfo->fh = fd;
+  return 0;
+}
+
+int myfs_read(const char *path, char *buf, size_t nbytes, off_t offset, struct fuse_file_info *finfo) {
+  pid_t pid = fuse_get_context()->pid;
+  int fd = finfo->fh;
+  int bytes_read = ada_read(fd, nbytes, offset, buf, pid);
+  return bytes_read;
+}
+
 static struct fuse_operations myfs_ops = {
   .init = myfs_init,
   .getattr = myfs_getattr,
   .readdir = myfs_readdir,
   .create = myfs_create,
+  .open = myfs_open,
+  .read = myfs_read,
   .destroy = myfs_destroy
 };
 

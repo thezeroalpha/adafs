@@ -1,4 +1,4 @@
-with adafs.operations, disk, adafs.inode;
+with adafs.operations, adafs.filp, disk, adafs.inode;
 with Interfaces.C.Strings;
 package c_interface is
   package fs renames adafs.operations;
@@ -34,5 +34,15 @@ package c_interface is
     Export => True,
     Convention => C,
     External_Name => "ada_create";
+
+  function ada_open(path : cstrings.chars_ptr; pid : c.int) return c.int with
+    Export => True,
+    Convention => C,
+    External_Name => "ada_open";
+
+  function ada_read(fd : c.int; nbytes : c.size_t; offset : c.int; buf : cstrings.chars_ptr; pid : c.int) return c.int with
+    Export => True,
+    Convention => C,
+    External_Name => "ada_read";
 
 end c_interface;

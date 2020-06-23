@@ -44,8 +44,8 @@ procedure test is
   end test_create;
 
   procedure test_write is
-    -- write 13 bytes
-    hello_str : String := "Hello, World!";
+    -- write 14 bytes
+    hello_str : String := "Hello, World!" & Character'Val(10);
     to_write : adafs.data_buf_t := adafs.data_buf_t(hello_str);
     fname : String := "/wfile";
     fd,n : Natural;
@@ -63,7 +63,7 @@ procedure test is
   end test_write;
 
   procedure test_readwrite is
-    hello_str : String := "Hello, World!";
+    hello_str : String := "Hello, World!" & Character'Val(10);
     to_write : adafs.data_buf_t := adafs.data_buf_t(hello_str);
     bytes_to_read : constant := hello_str'Length;
     read_data : adafs.data_buf_t (1..bytes_to_read);
@@ -87,8 +87,8 @@ procedure test is
   end test_readwrite;
 
   procedure test_seek is
-    -- write 13 bytes
-    hello_str : String := "Hello, World!";
+    -- write 14 bytes
+    hello_str : String := "Hello, World!" & Character'Val(10);
     to_write : adafs.data_buf_t := adafs.data_buf_t(hello_str);
     fname : String := "/seekfile";
     fd,n : Natural;
@@ -114,11 +114,11 @@ procedure test is
       pos := pos+n;
     end;
 
-    -- seek to the end (after '!')
+    -- seek to the end (after '\n')
     pos := fs.lseek(fd, 0, fs.SEEK_END, pid);
     pragma assert(pos = hello_str'Length);
     declare
-      to_write : adafs.data_buf_t := "it works!";
+      to_write : adafs.data_buf_t := adafs.data_buf_t("it works!" & Character'Val(10));
       n : Natural;
     begin
       n := fs.write(fd, to_write'Length, to_write, pid);
@@ -126,11 +126,11 @@ procedure test is
     end;
 
 
-    -- seek 12 bytes backwards ('r')
-    pos := fs.lseek(fd, -12, fs.SEEK_CUR, pid);
+    -- seek 13 bytes backwards ('r')
+    pos := fs.lseek(fd, -14, fs.SEEK_CUR, pid);
     pragma assert(pos = 10);
     declare
-      to_write : adafs.data_buf_t := "...";
+      to_write : adafs.data_buf_t := "....";
       n : Natural;
     begin
       n := fs.write(fd, to_write'Length, to_write, pid);
@@ -140,11 +140,11 @@ procedure test is
     pos := fs.lseek(fd, 1, fs.SEEK_SET, pid);
     pragma assert(pos = 1);
     declare
-      bytes_to_read : constant := 21;
+      bytes_to_read : constant := 23;
       data : adafs.data_buf_t (1..bytes_to_read);
     begin
       data := fs.read(fd, bytes_to_read, pid);
-      pragma assert(String(data) = "Hell yes....it works!");
+      pragma assert(String(data) = "Hell yes.....it works!" & Character'Val(10));
     end;
 
     fs.deinit;
