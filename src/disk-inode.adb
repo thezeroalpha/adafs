@@ -1,5 +1,4 @@
-package body disk.inode
-is
+package body disk.inode is
   function get_inode (num : Natural) return in_mem is
     offset : Natural := 3+get_disk.super.imap_blocks+get_disk.super.zmap_blocks;
     bnum : block_num := ((num-1)/num_per_block)+offset;
@@ -122,9 +121,16 @@ is
   -- given 'path', parse it as far as last dir.
   -- fetch inode for that dir into inode table, return its index.
   -- the final component is in 'final'
-  function last_dir (path : adafs.path_t; procentry : adafs.proc.entry_t; final : out adafs.name_t) return Natural is
-    function parse_next (path : adafs.path_t; cursor : in out Positive) return String is
-      procedure skip_slashes is
+  function last_dir (path : adafs.path_t; procentry : adafs.proc.entry_t) return path_parse_res_t is
+    type parsed_res_t is record
+      next : adafs.name_t;
+      new_cursor : Positive;
+    end record;
+
+    subtype cursor_t is Natural range path'Range;
+
+    function parse_next (path : adafs.path_t; cursor : cursor_t) return parsed_res_t is
+      procedure skip_slashes (cursor : in out cursor_t) is
       begin
         while path(cursor) = '/' and cursor+1 /= path'Last loop
           cursor := cursor+1;
@@ -133,14 +139,18 @@ is
           cursor := cursor+1;
         end if;
       end skip_slashes;
+
+      function to_name_t (s : String) return adafs.name_t is (s & (1..adafs.name_t'Last-s'Length => adafs.nullchar));
       startpos, endpos : Positive;
+
+      parse_cursor : cursor_t := cursor;
     begin
-      skip_slashes;
-      if cursor = path'Last or path(cursor) = Character'Val(0) then
-        return "";
+      skip_slashes(parse_cursor);
+      if parse_cursor = path'Last or path(parse_cursor) = Character'Val(0) then
+        return (to_name_t(""), parse_cursor);
       end if;
-      startpos := cursor;
-      endpos := cursor;
+      startpos := parse_cursor;
+      endpos := parse_cursor;
       while endpos+1 /= path'Last and path(endpos+1) /= Character'Val(0) and path(endpos+1) /= '/' loop
         if path(endpos+1) /= '/' then
           endpos := endpos+1;
@@ -149,33 +159,32 @@ is
       if endpos+1 = path'Last and path(endpos+1) /= '/' and path(endpos+1) /= Character'Val(0) then
         endpos := endpos+1;
       end if;
-      cursor := (if (endpos = path'Last or path(endpos) = Character'Val(0)) then endpos else endpos+1);
-      return path(startpos..endpos);
+      parse_cursor := (if (endpos = path'Last or path(endpos) = Character'Val(0)) then endpos else endpos+1);
+      return (to_name_t(path(startpos..endpos)), parse_cursor);
     end parse_next;
 
     inum : Natural := (if path(1) = '/' then procentry.rootdir else procentry.workdir);
     new_inum : Natural;
-    cursor : Natural range path'Range := path'First;
+    cursor : cursor_t := path'First;
     new_name : adafs.name_t;
   begin
     loop
       declare
-        nn : String := parse_next(path, cursor);
+        parsed_next : parsed_res_t := parse_next(path, cursor);
       begin
-        new_name := nn & (1..adafs.name_t'Last-nn'Length => Character'Val(0));
+        cursor := parsed_next.new_cursor;
+        new_name := parsed_next.next;
       end;
       if cursor = path'Last or path(cursor) = Character'Val(0) then
         -- if inode with inum is dir, normal exit
         -- otherwise, should error
-        final := new_name;
-        return inum;
+        return (inum, new_name);
       end if;
 
       -- there is more path, keep parsing
       new_inum := advance (inum, new_name);
       if new_inum = nil_inum then
-        final := new_name;
-        return nil_inum;
+        return (nil_inum, new_name);
       end if;
       inum := new_inum;
     end loop;
@@ -183,8 +192,9 @@ is
 
   -- parse 'path' and return its inode number. analogous to 'eat_path'
   function path_to_inum (path : adafs.path_t; procentry : adafs.proc.entry_t) return Natural is
-    final_compt : adafs.name_t;
-    ldir_inum : Natural := last_dir(path, procentry, final_compt);
+    path_parse_res : path_parse_res_t := last_dir(path, procentry);
+    final_compt : adafs.name_t := path_parse_res.final;
+    ldir_inum : inum_t := path_parse_res.inum;
   begin
     if ldir_inum = 0 then
       return 0; -- couldn't open final directory
@@ -478,8 +488,9 @@ is
   -- returns inode number, or 0 on error
   function new_inode (path_str : String; procentry : adafs.proc.entry_t) return Natural is
     path : adafs.path_t := path_str  & (1..adafs.path_t'Last-path_str 'Length => Character'Val(0));
-    final_compt : adafs.name_t;
-    ldir_inum : Natural := last_dir(path, procentry, final_compt);
+    path_parse_res : path_parse_res_t := last_dir(path, procentry);
+    final_compt : adafs.name_t := path_parse_res.final;
+    ldir_inum : Natural := path_parse_res.inum;
     inum : Natural;
     ino : in_mem;
   begin
@@ -577,8 +588,9 @@ is
 
   procedure unlink_file (path_str : String; procentry : adafs.proc.entry_t) is
     path : adafs.path_t := path_str  & (1..adafs.path_t'Last-path_str 'Length => Character'Val(0));
-    final_compt : adafs.name_t;
-    parent_inum : Natural := last_dir(path, procentry, final_compt);
+    path_parse_res : path_parse_res_t := last_dir(path, procentry);
+    final_compt : adafs.name_t := path_parse_res.final;
+    parent_inum : Natural := path_parse_res.inum;
     inum : Natural;
 
     pos : Natural := 1;
@@ -641,7 +653,5 @@ is
       put_inode(dir_ino);
     end if;
   end unlink_file;
-
   --  procedure remove_dir (path_str : adafs.path_t; procentry : adafs.proc.entry_t);
-
 end disk.inode;

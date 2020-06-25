@@ -38,7 +38,7 @@ is
     stream_io_disk_acc := sio.stream(stream_io_disk_ft);
     disk.acc := stream_io_disk_ft'Access;
 
-    if Integer(sio.size (disk.acc.all)) /= size_bytes then
+    if Natural(sio.size (disk.acc.all)) /= size_bytes then
       tio.put_line ("File size reported as" & size_bytes'Image & ", actual stream size" & sio.size(disk.acc.all)'Image);
       tio.put_line ("Stopping...");
       Ada.Task_Identification.Abort_Task(Ada.Task_Identification.Current_Task);

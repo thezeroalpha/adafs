@@ -15,7 +15,7 @@ procedure mkfs is
   pragma Warnings (Off, "*bits of*unused");
 
   function bitmapsize_in_blocks (nbits : Natural) return Natural is
-    nblocks : Natural := 0;
+    nblocks : Natural;
     bitmapshift : constant := 13; -- = log2(map_bits_per_block)
   begin
     nblocks := adafs.bshift_r (nbits, bitmapshift);

@@ -17,8 +17,8 @@ is
   rchar : Character := Character'Val(13);
 
   -- TODO: need to come up with pre/post conditions for these functions to avoid overflow
+  -- it's giving me weird errors...
   function bshift_l (n, i : Natural) return Natural is (n*(2**i)) with SPARK_Mode => Off;
   function bshift_r (n, i : Natural) return Natural is (n/(2**i)) with SPARK_Mode => Off;
-
 
 end adafs;

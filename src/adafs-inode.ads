@@ -8,6 +8,7 @@ is
   n_indirects_in_block : constant := block_size/(Natural'Size/8); -- actually 'num zones per indirect block'
   max_file_size : constant := n_direct_zones + n_indirects_in_block + (n_indirects_in_block * n_indirects_in_block);
 
+  subtype inum_t is Natural; -- perhaps this should be restricted, but inode number range depends on disk size...
   type attrs_t is record
     size : Natural;
     nlinks : Natural;
@@ -28,7 +29,7 @@ is
     zone : zone_array;
     nlinks : Natural;
     -- these are not present on disk:
-    num : Natural; -- inode number on its (minor) device
+    num : inum_t; -- inode number on its (minor) device
     count : Natural; -- times inode used, if 0 then free
     n_dzones : Natural; -- number of direct zones
     n_indirs : Natural; -- number indirect zones per indirect block
@@ -40,7 +41,7 @@ is
 
   -- directory entries
   type direct is record
-    inode_num : Natural;
+    inode_num : inum_t;
     name : name_t;
   end record;
 
@@ -57,10 +58,9 @@ is
   -- inode table
   subtype tab_num_t is Natural range 0..nr_inodes;
   type tab_t is array (1..tab_num_t'Last) of in_mem;
-  nil_inum : Natural := 0;
+  nil_inum : inum_t := 0;
   no_entry : tab_num_t := 0;
   tab : tab_t;
-
 
   function calc_num_inodes_for_blocks (nblocks : Natural) return Natural
     with Global => (input => num_per_block),

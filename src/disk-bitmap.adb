@@ -39,18 +39,11 @@ is
   end clear_bitmap;
 
   procedure set_bit (bit_num : bit_nums; value : bit_t) is
-    bmp_block : Natural := ((bit_num-1)/adafs.block_size)+1;
-
-    byte_location_disk : Natural := Natural((bit_num-1)/8)+1;
-    bit_offset : Natural := 8-((bit_num-1) mod 8)-1;
+    bmp_block : adafs.bitmap.bitmap_block_range := ((bit_num-1)/adafs.block_size)+1;
+    byte_location_disk : file_position := (bit_num-1)/8+1;
+    bit_offset : file_position := 8-((bit_num-1) mod 8)-1;
     orig_byte : bitmap_byte_t;
   begin
-    -- should not be necessary to read from disk here, but just in case:
-    --  if not is_reading then
-    --    sio.set_mode(stream_io_disk_ft, sio.in_file);
-    --  end if;
-    --  sio.set_index(stream_io_disk_ft, sio.count(((start_block-1)*1024)+byte_location_disk));
-    --  bitmap_byte_t'read(stream_io_disk_acc, bitmap.bitmap(bmp_block)(bit_num));
     orig_byte := bitmap.bitmap(bmp_block)((((bit_num-1)/8) mod 1024)+1);
     bitmap.bitmap(bmp_block)((((bit_num-1)/8) mod 1024)+1) := (orig_byte and not(2#1# * (2**bit_offset))) or (bitmap_byte_t(value) * 2**(bit_offset));
 
@@ -63,21 +56,15 @@ is
   end set_bit;
 
   function get_bit (bit_num : bit_nums) return bit_t is
-    bmp_block : Natural := ((bit_num-1)/adafs.block_size)+1;
-    byte_location : Natural := Natural((bit_num-1)/8)+1;
-    bit_offset : Natural := 8-((bit_num-1) mod 8)-1;
+    bmp_block : adafs.bitmap.bitmap_block_range := ((bit_num-1)/adafs.block_size)+1;
+    byte_location : file_position := (bit_num-1)/8+1;
+    bit_offset : file_position := 8-((bit_num-1) mod 8)-1;
 
     the_byte : bitmap_byte_t;
-    shifted_byte : Natural;
+    shifted_byte : bitmap_byte_t;
   begin
-    -- should not be necessary to read from disk here, but just in case:
-    --  if not is_reading then
-    --    sio.set_mode(stream_io_disk_ft, sio.in_file);
-    --  end if;
-    --  sio.set_index(stream_io_disk_ft, sio.count(((start_block-1)*1024)+byte_location));
-    --  bitmap_byte_t'read(stream_io_disk_acc, the_byte);
     the_byte := bitmap.bitmap(bmp_block)((((bit_num-1)/8) mod 1024)+1);
-    shifted_byte := Natural(the_byte/(2**bit_offset));
+    shifted_byte := the_byte/(2**bit_offset);
     return bit_t(shifted_byte mod 2) and bit_t(2#1#);
   end get_bit;
 

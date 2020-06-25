@@ -3,7 +3,13 @@ with adafs; use type adafs.data_buf_t;
 with adafs.proc;
 with disk.bitmap;
 package disk.inode is
+  type path_parse_res_t is record
+    inum : Natural;
+    final : adafs.name_t;
+  end record;
+
   function path_to_inum (path : adafs.path_t; procentry : adafs.proc.entry_t) return Natural;
+
   function new_inode (path_str : String; procentry : adafs.proc.entry_t) return Natural;
   function get_inode (num : Natural) return in_mem;
   procedure unlink_file (path_str : String; procentry : adafs.proc.entry_t);
