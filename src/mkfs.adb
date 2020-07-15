@@ -232,7 +232,7 @@ begin
   tio.Put_Line ("disk: " & disk.get_disk.filename);
   disk.zero_disk;
   tio.Put_Line ("zeroed successfully");
-  tio.Put_Line ("size:" & disk.size_bytes'Image & " B," & Natural'(disk.size_bytes/1E3)'Image & " KB," & Natural'(disk.size_bytes/1E6)'Image & " GB," & disk.size_in_bits'Image & " bits");
+  tio.Put_Line ("size:" & disk.size_bytes'Image & " B," & Natural'(disk.size_bytes/1E3)'Image & " KB," & Natural'(disk.size_bytes/1E6)'Image & " MB," & disk.size_in_bits'Image & " bits");
   tio.Put_Line ("blocks:" & disk.size_blocks'Image);
   write_bootblock;
   write_superblock (next_datazone, next_inode, zoff, inode_offset);

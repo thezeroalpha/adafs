@@ -31,7 +31,7 @@ int64_t write_n_bytes(int bytes) {
   char *str = malloc(bytes*sizeof(char));
   memset(str, 51914, bytes);
   FILE *fp;
-  fp = fopen("/home/zeroalpha/adafs/write_bytes", "w");
+  fp = fopen("/home/zeroalpha/adafs/kilofile", "w");
   clocks_before = rdtsc_s();
   fwrite(str, sizeof(char), bytes, fp);
   clocks_after = rdtsc_e();
@@ -41,7 +41,7 @@ int64_t write_n_bytes(int bytes) {
   return clocks_per;
 }
 int main() {
-  printf("%ld\n", write_n_bytes(10*1024));
+  printf("%ld\n", write_n_bytes(100*1024));
   return 0;
 }
 

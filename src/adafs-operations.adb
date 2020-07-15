@@ -121,7 +121,7 @@ package body adafs.operations is
     ino := disk.inode.get_inode(inum);
     fsize := ino.size;
     if position > disk.get_disk.super.max_size - num_bytes then
-      tio.put_line("cannot write, file would be too large");
+      tio.put_line("cannot write, file would be too large." & num_bytes'Image & " >" & disk.get_disk.super.max_size'Image);
       return 0;
     end if;
     if position > fsize then
