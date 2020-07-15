@@ -1,1 +1,2 @@
 pragma Ada_2020;
+pragma Suppress(All_Checks);

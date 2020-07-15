@@ -2,7 +2,8 @@
   "src/*.adb": {"alternate": "src/{}.ads"},
   "src/*.ads": {"alternate": "src/{}.adb"},
   "test/test.adb": {"type": "test"},
-  "Makefile": {"type": "mk"},
+  "test/benchmark.c": {"type": "benchmark"},
+  "Makefile": {"type": "make"},
   "*.gpr": {"type": "proj"},
   "src/fuse_driver/fuse_driver.c": {"type": "driver"}
 }

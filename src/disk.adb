@@ -44,10 +44,10 @@ is
       Ada.Task_Identification.Abort_Task(Ada.Task_Identification.Current_Task);
     end if;
     disk.super := read_super(adafs.superblock_num);
-    if disk.super.magic /= 16#2468# then
+    if disk.super.magic /= 16#CACA# then
       tio.put_line("Magic number mismatch, disk likely not in MINIX format."); -- should do something more meaningful than this
-      tio.put_line ("Stopping...");
-      Ada.Task_Identification.Abort_Task(Ada.Task_Identification.Current_Task);
+      --  tio.put_line ("Stopping...");
+      --  Ada.Task_Identification.Abort_Task(Ada.Task_Identification.Current_Task);
     end if;
    end Initialize;
 
@@ -65,7 +65,6 @@ is
    disk : aliased disk_t;
 
    function get_disk return access disk_t is (disk'Access);
-
 
    procedure zero_block (blk : block_num) is
      type zero_block_arr is array (1..adafs.block_size) of Character;

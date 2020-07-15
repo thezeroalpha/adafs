@@ -25,17 +25,17 @@ extern int ada_read(int fd, size_t nbytes, off_t offset, char *buf, pid_t pid);
 extern int ada_write(int fd, size_t nbytes, off_t offset, const char *buf, pid_t pid);
 extern void ada_unlink(const char *path, pid_t pid, int isdir);
 
-void *myfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
+void *adafs_init(struct fuse_conn_info *conn, struct fuse_config *cfg) {
   adainit();
   ada_fsinit();
   return NULL;
 }
-void myfs_destroy(void *private_data) {
+void adafs_destroy(void *private_data) {
   ada_fsdeinit();
   adafinal();
 }
 
-int myfs_getattr(const char *path, struct stat *st, struct fuse_file_info *finfo)
+int adafs_getattr(const char *path, struct stat *st, struct fuse_file_info *finfo)
 {
   pid_t pid = fuse_get_context()->pid;
 
@@ -56,7 +56,7 @@ int myfs_getattr(const char *path, struct stat *st, struct fuse_file_info *finfo
   return 0;
 }
 
-int myfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+int adafs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
 {
   pid_t pid = fuse_get_context()->pid;
   struct ada_attrs_t ada_attrs = ada_getattr(path, pid);
@@ -70,7 +70,7 @@ int myfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t o
   return 0;
 }
 
-int myfs_create(const char *path, mode_t mode, struct fuse_file_info *finfo) {
+int adafs_create(const char *path, mode_t mode, struct fuse_file_info *finfo) {
   pid_t pid = fuse_get_context()->pid;
   int fd = ada_create(path, pid);
   if (fd == 0) return -EEXIST;
@@ -78,14 +78,14 @@ int myfs_create(const char *path, mode_t mode, struct fuse_file_info *finfo) {
   return 0;
 }
 
-int myfs_open(const char *path, struct fuse_file_info *finfo) {
+int adafs_open(const char *path, struct fuse_file_info *finfo) {
   pid_t pid = fuse_get_context()->pid;
   int fd = ada_open(path, pid);
   finfo->fh = fd;
   return 0;
 }
 
-int myfs_release(const char *path, struct fuse_file_info *finfo) {
+int adafs_release(const char *path, struct fuse_file_info *finfo) {
   pid_t pid = fuse_get_context()->pid;
   int fd = finfo->fh;
   ada_close(fd, pid);
@@ -93,44 +93,44 @@ int myfs_release(const char *path, struct fuse_file_info *finfo) {
   return 0;
 }
 
-int myfs_read(const char *path, char *buf, size_t nbytes, off_t offset, struct fuse_file_info *finfo) {
+int adafs_read(const char *path, char *buf, size_t nbytes, off_t offset, struct fuse_file_info *finfo) {
   pid_t pid = fuse_get_context()->pid;
   int fd = finfo->fh;
   int bytes_read = ada_read(fd, nbytes, offset, buf, pid);
   return bytes_read;
 }
 
-int myfs_write(const char *path, const char *buf, size_t nbytes, off_t offset, struct fuse_file_info *finfo) {
+int adafs_write(const char *path, const char *buf, size_t nbytes, off_t offset, struct fuse_file_info *finfo) {
   pid_t pid = fuse_get_context()->pid;
   int fd = finfo->fh;
   int bytes_written = ada_write(fd, nbytes, offset, buf, pid);
   return bytes_written;
 }
 
-int myfs_unlink(const char *path) {
+int adafs_unlink(const char *path) {
   pid_t pid = fuse_get_context()->pid;
   ada_unlink(path, pid, 0);
   return 0;
 }
 
-int myfs_rmdir(const char *path) {
+int adafs_rmdir(const char *path) {
   pid_t pid = fuse_get_context()->pid;
   ada_unlink(path, pid, 1);
   return 0;
 }
 
-static struct fuse_operations myfs_ops = {
-  .init = myfs_init,
-  .getattr = myfs_getattr,
-  .readdir = myfs_readdir,
-  .create = myfs_create,
-  .open = myfs_open,
-  .release = myfs_release,
-  .read = myfs_read,
-  .write = myfs_write,
-  .unlink = myfs_unlink,
-  .rmdir = myfs_rmdir,
-  .destroy = myfs_destroy
+static struct fuse_operations adafs_ops = {
+  .init = adafs_init,
+  .getattr = adafs_getattr,
+  .readdir = adafs_readdir,
+  .create = adafs_create,
+  .open = adafs_open,
+  .release = adafs_release,
+  .read = adafs_read,
+  .write = adafs_write,
+  .unlink = adafs_unlink,
+  .rmdir = adafs_rmdir,
+  .destroy = adafs_destroy
 };
 
 char *devfile = NULL;
@@ -147,5 +147,5 @@ int main(int argc, char **argv)
     argc--;
   }
   // leave the rest to FUSE
-  return fuse_main(argc, argv, &myfs_ops, NULL);
+  return fuse_main(argc, argv, &adafs_ops, NULL);
 }

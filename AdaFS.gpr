@@ -4,12 +4,13 @@ project AdaFS is
   for Languages use ("Ada", "C");
   for Object_Dir use "obj/";
   for Exec_Dir use "dist/";
-  for Main use ("mkfs.adb", "test.adb", "fuse_driver.c");
+  for Main use ("mkfs.adb", "test.adb", "fuse_driver.c", "benchmark.c");
 
   package Builder is
     for Executable ("mkfs.adb") use "mkfs";
     for Executable ("test.adb") use "test";
     for Executable ("fuse_driver.c") use "fuse";
+    for Executable ("benchmark.c") use "benchmark";
   end Builder;
 
   package Compiler is

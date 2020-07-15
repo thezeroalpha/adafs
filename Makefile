@@ -12,18 +12,19 @@ all: analyze
 fs: all
 	dist/mkfs
 
-fuse: clean all
-	@mkfifo $(FUSE_LOGFIFO)
-	@mkdir -p $(MOUNTPOINT)
-	dist/fuse -d -s disk.img $(MOUNTPOINT) 1> $(FUSE_LOGFIFO) 2>&1 &
-	@echo "Fuse running in the background"
-
 analyze:
 	@# (P)roject, (d)isplay progress, (f)orce recompilation, (c)ompile only
 	@# gnats: check syntax
 	@# gnatc: check semantics
 	@# https://docs.adacore.com/gnat_ugn-docs/html/gnat_ugn/gnat_ugn/building_executable_programs_with_gnat.html
 	gprbuild -P $(PROJFILE) -gnatc -d -f -gnata -c -XFUSE_LIB="$(FUSE_LIB)"
+
+benchmark: test/benchmark.c
+	gcc -g test/benchmark.c -o dist/benchmark
+
+mount: all
+	-mkdir -p $(MOUNTPOINT)
+	dist/fuse -s -f disk.img $(MOUNTPOINT)
 
 prove:
 	gnatprove -P "$(PROJFILE)" --report=fail

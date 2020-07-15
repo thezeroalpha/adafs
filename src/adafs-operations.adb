@@ -98,7 +98,7 @@ package body adafs.operations is
     procentry : proc.entry_t := proc.get_entry(pid);
     filp_slot_num : filp.tab_num_t;
     inum, position, fsize, chunk, offset_in_blk : Natural;
-    ino : adafs.inode.in_mem;
+    ino : aliased adafs.inode.in_mem;
     nbytes : Natural := num_bytes;
     data_cursor : Natural := data'First;
   begin
@@ -131,8 +131,8 @@ package body adafs.operations is
     -- split the transfer into chunks that don't span two blocks
     while nbytes /= 0 loop
       offset_in_blk := ((position-1) mod block_size)+1;
-      chunk :=  (if nbytes < block_size-offset_in_blk then nbytes else block_size-offset_in_blk);
-      disk.inode.write_chunk(ino, position, offset_in_blk, chunk, nbytes, data(data_cursor..data_cursor+chunk-1));
+      chunk :=  (if nbytes < block_size-offset_in_blk+1 then nbytes else block_size-offset_in_blk+1);
+      disk.inode.write_chunk(ino'access, position, offset_in_blk, chunk, nbytes, data(data_cursor..data_cursor+chunk-1));
       nbytes := nbytes - chunk;
       data_cursor := data_cursor+chunk;
       position := position + chunk;
@@ -152,7 +152,7 @@ package body adafs.operations is
     data_buf : adafs.data_buf_t(1..num_bytes) := (others => Character'Val(0));
     inum, position, fsize, chunk, offset_in_blk : Natural;
     nbytes : Natural := num_bytes;
-    data_cursor : Natural := 0;
+    data_cursor : Natural := 1;
     ino : adafs.inode.in_mem;
   begin
     tio.put_line(Character'Val(10) & "** pid" & pid'Image & " reads" & num_bytes'Image & " bytes from fd" & fd'Image & " **");
@@ -175,7 +175,7 @@ package body adafs.operations is
 
     while nbytes /= 0 loop
       offset_in_blk := ((position-1) mod block_size)+1;
-      chunk :=  (if nbytes < block_size-offset_in_blk then nbytes else block_size-offset_in_blk);
+      chunk :=  (if nbytes < block_size-offset_in_blk+1 then nbytes else block_size-offset_in_blk+1);
       declare
         bytes_left : Natural := fsize-position+1;
       begin
@@ -184,9 +184,9 @@ package body adafs.operations is
           chunk := bytes_left;
         end if;
       end;
-      data_buf := disk.inode.read_chunk(ino, position, offset_in_blk, chunk, nbytes);
+      data_buf(data_cursor..data_cursor+chunk-1) := disk.inode.read_chunk(ino, position, offset_in_blk, chunk, nbytes);
       nbytes := nbytes - chunk;
-      data_cursor := data_cursor+chunk-1;
+      data_cursor := data_cursor+chunk;
       position := position + chunk;
     end loop;
     filp.tab(filp_slot_num).pos := position;

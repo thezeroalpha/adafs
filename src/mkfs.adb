@@ -62,7 +62,7 @@ procedure mkfs is
     super.zmap_blocks := zone_bitmap.size_in_blocks;
     super.first_data_zone := n_initblks;
     super.log_zone_size := 0;
-    super.magic := 16#2468#;
+    super.magic := 16#CACA#;
     super.max_size := adafs.inode.max_file_size;
 
     diskwrite_superblock (adafs.superblock_num, super);

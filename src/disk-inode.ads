@@ -17,7 +17,7 @@ package disk.inode is
   procedure put_inode (ino : in_mem);
   procedure clear_zone (ino : in_mem; pos : Natural);
 
-  procedure write_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : adafs.data_buf_t);
+  procedure write_chunk(ino : access in_mem; position, offset_in_blk, chunk, nbytes : Natural; data : adafs.data_buf_t);
   function read_chunk(ino : in_mem; position, offset_in_blk, chunk, nbytes : Natural) return adafs.data_buf_t;
   function read_dir(ino : in_mem) return adafs.dir_buf_t;
 end disk.inode;
