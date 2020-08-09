@@ -35,11 +35,7 @@ procedure mkfs is
 
   procedure write_bootblock is
     procedure write_boot is new disk.write_block (adafs.boot.bootblock_t);
-    bootblock : adafs.boot.bootblock_t := (
-      adafs.boot.bootblock_t'Last-2 => "....",
-      adafs.boot.bootblock_t'Last-1 => "ENDS",
-      adafs.boot.bootblock_t'Last => "HERE",
-      others=>"BOOT");
+    bootblock : adafs.boot.bootblock_t := (others => adafs.nullchar);
   begin
     write_boot (adafs.bootblock_num, bootblock);
     tio.put_line ("Wrote placeholder boot block");

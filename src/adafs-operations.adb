@@ -12,16 +12,11 @@ package body adafs.operations is
     filp_slot_num : adafs.filp.tab_num_t;
     inum : Natural;
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " opens " & path & " **");
     adafs.filp.get_free_filp(filp_slot_num);
     inum := disk.inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
-      tio.put_line ("couldn't open " & path);
       return filp.null_fd;
     end if;
-
-    tio.put_line("Free fd:" & fd'Image);
-    tio.put_line("Free filp slot:" & filp_slot_num'Image);
 
     filp.tab(filp_slot_num).count := 1;
     filp.tab(filp_slot_num).ino := inum;
@@ -51,14 +46,11 @@ package body adafs.operations is
     procentry : proc.entry_t := proc.get_entry(pid);
     filp_slot_num : filp.tab_num_t;
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " closes fd" & fd'Image & " **");
     if fd = 0 then
-      tio.put_line("cannot close null fd");
       return;
     end if;
     filp_slot_num := procentry.open_filps(fd);
     if filp_slot_num = 0 then
-      tio.put_line("cannot close fd" & fd'Image & ", is not open");
       return;
     end if;
     filp.tab(filp_slot_num).count := filp.tab(filp_slot_num).count-1;
@@ -72,20 +64,14 @@ package body adafs.operations is
     filp_slot_num : filp.tab_num_t;
     inum : Natural;
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " creates " & path & " **");
     filp.get_free_filp(filp_slot_num);
     if fd = filp.null_fd then
-      tio.put_line("no free fd available");
       return filp.null_fd;
     end if;
     inum := disk.inode.new_inode (path, procentry);
-    tio.put_line("created inode" & inum'Image);
     if inum = 0 then
-      tio.put_line("Could not create " & path);
       return filp.null_fd;
     end if;
-    tio.put_line("Free fd:" & fd'Image);
-    tio.put_line("Free filp slot:" & filp_slot_num'Image);
 
     filp.tab(filp_slot_num).count := 1;
     filp.tab(filp_slot_num).ino := inum;
@@ -102,15 +88,11 @@ package body adafs.operations is
     nbytes : Natural := num_bytes;
     data_cursor : Natural := data'First;
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " writes" & num_bytes'Image & " bytes to fd" & fd'Image & " **");
-    tio.put_line("data: " & String(data(data'First..num_bytes)));
     if fd = 0 then
-      tio.put_line("cannot write to null fd");
       return 0;
     end if;
     filp_slot_num := procentry.open_filps(fd);
     if filp_slot_num = 0 then
-      tio.put_line("cannot write, fd" & fd'Image & " refers to null filp slot");
       return 0;
     end if;
     if num_bytes = 0 then
@@ -121,7 +103,6 @@ package body adafs.operations is
     ino := disk.inode.get_inode(inum);
     fsize := ino.size;
     if position > disk.get_disk.super.max_size - num_bytes then
-      tio.put_line("cannot write, file would be too large." & num_bytes'Image & " >" & disk.get_disk.super.max_size'Image);
       return 0;
     end if;
     if position > fsize then
@@ -155,14 +136,11 @@ package body adafs.operations is
     data_cursor : Natural := 1;
     ino : adafs.inode.in_mem;
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " reads" & num_bytes'Image & " bytes from fd" & fd'Image & " **");
     if fd = 0 then
-      tio.put_line("cannot read from null fd");
       return data_buf;
     end if;
     filp_slot_num := procentry.open_filps(fd);
     if filp_slot_num = 0 then
-      tio.put_line("cannot read, fd" & fd'Image & " refers to null filp slot");
       return data_buf;
     end if;
     if num_bytes = 0 then
@@ -200,11 +178,8 @@ package body adafs.operations is
     ino : adafs.inode.in_mem;
     null_buf : adafs.dir_buf_t(2..1);
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " reads dir at path" & path & " **");
-
     inum := disk.inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
-      tio.put_line ("couldn't open " & path);
       return null_buf;
     end if;
     ino := disk.inode.get_inode(inum);
@@ -216,14 +191,11 @@ package body adafs.operations is
     filp_slot_num : filp.tab_num_t;
     pos : Natural;
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " seeks fd" & fd'Image & " **");
     if fd = 0 then
-      tio.put_line("cannot seek in null fd");
       return 0;
     end if;
     filp_slot_num := procentry.open_filps(fd);
     if filp_slot_num = 0 then
-      tio.put_line("cannot seek, fd" & fd'Image & " refers to null filp slot");
       return 0;
     end if;
     case whence is
@@ -241,15 +213,12 @@ package body adafs.operations is
     end case;
 
     if offset > 0 and pos+offset < pos then
-      tio.put_line("invalid position");
       return 0;
     end if;
     if offset < 0 and pos + offset > pos then
-      tio.put_line("invalid position");
       return 0;
     end if;
     pos := pos+offset;
-    tio.put_line("moving to byte" & pos'Image);
     filp.tab(filp_slot_num).pos := pos;
     return pos;
   end lseek;
@@ -260,10 +229,8 @@ package body adafs.operations is
     inum : Natural;
     ino : adafs.inode.in_mem;
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " gets attributes of " & path & " **");
     inum := disk.inode.path_to_inum (path & (1..adafs.path_t'Last-path'Length => Character'Val(0)), procentry);
     if inum = 0 then
-      tio.put_line ("couldn't open " & path);
       return (size => 0, nlinks => 0);
     end if;
     ino := disk.inode.get_inode(inum);
@@ -274,7 +241,6 @@ package body adafs.operations is
   procedure unlink (path : String; pid : adafs.proc.tab_range; isdir : Boolean := False) is
     procentry : adafs.proc.entry_t := adafs.proc.get_entry(pid);
   begin
-    tio.put_line(Character'Val(10) & "** pid" & pid'Image & " unlinks " & path & " **");
     if not isdir then
       disk.inode.unlink_file(path, procentry);
     else

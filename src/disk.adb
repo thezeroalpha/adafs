@@ -46,7 +46,6 @@ is
     disk.super := read_super(adafs.superblock_num);
     if disk.super.magic /= 16#CACA# then
       tio.put_line("Magic number mismatch, disk likely not in MINIX format."); -- should do something more meaningful than this
-      --  tio.put_line ("Stopping...");
       --  Ada.Task_Identification.Abort_Task(Ada.Task_Identification.Current_Task);
     end if;
    end Initialize;
@@ -78,10 +77,8 @@ is
 
    procedure zero_disk is
    begin
-     tio.put_line ("Zeroing disk");
      for i in 1..size_blocks loop
        zero_block (i);
-       tio.put (adafs.rchar & "complete blocks " & i'Image & "/" & size_blocks'Image);
      end loop;
      tio.put(adafs.nlchar);
    end zero_disk;

@@ -127,7 +127,6 @@ package body disk.inode is
       for dp in dir_entry_blk'Range loop
         if dir_entry_blk(dp).inode_num /= 0 and dir_entry_blk(dp).name = name then
           -- match
-          tio.put_line("advance(): for last part '" & name & "' (in inode" & inum'Image & "), found dir entry block" & bnum'Image & " entry #" & dp'Image & " -> inode" & dir_entry_blk(dp).inode_num'Image);
           return dir_entry_blk(dp).inode_num;
         end if;
       end loop;
@@ -223,7 +222,6 @@ package body disk.inode is
       return ldir_inum;
     end if;
     ldir_inum := advance(ldir_inum, final_compt);
-    tio.put_line(path & ": inode" & ldir_inum'Image);
     return ldir_inum;
   end path_to_inum;
 
@@ -456,14 +454,12 @@ package body disk.inode is
         if new_slots > old_slots then -- not found, but room left in dir
           free_slot := dp;
           hit := True;
-          tio.put_line("available direntry slot:" & free_slot'Image & ", block" & bnum'Image);
           exit;
         end if;
 
         if dir_entry_blk(dp).inode_num = 0 then
           free_slot := dp;
           hit := True;
-          tio.put_line("available direntry slot:" & free_slot'Image & ", dir inode" & dir_num'Image & ", block" & bnum'Image);
           exit;
         end if;
       end loop;
@@ -483,20 +479,16 @@ package body disk.inode is
       dir_ino := get_inode(dir_num);
       free_slot := 1;
       extended := True;
-      tio.put_line("dir inode" & dir_num'Image & " extended, into block" & bnum'Image);
-      tio.put_line("available direntry slot:" & free_slot'Image & ", dir inode" & dir_num'Image & ", block" & bnum'Image);
     end if;
 
     dir_entry_blk(free_slot).name := str & (1..adafs.name_t'Last-str'Length => Character'Val(0));
     dir_entry_blk(free_slot).inode_num := inum;
-    tio.put_line("entry added: " & str & " ->" & inum'Image);
     disk_write_dir_entry_block(bnum, dir_entry_blk);
     if new_slots > old_slots then
       dir_ino.size := new_slots * direct'Size;
       dir_ino.nlinks := dir_ino.nlinks+1;
       put_inode(dir_ino);
       if extended then
-        tio.put_line("dir was extended, writing dir inode" & dir_ino.num'Image & " to disk");
         put_inode(dir_ino);
       end if;
     end if;
@@ -519,9 +511,7 @@ package body disk.inode is
     inum := advance(ldir_inum, final_compt);
     if inum = 0 then
       -- good, doesn't exist - create it
-      tio.put_line("creating last component '" & final_compt & "'");
       inum := alloc_inode;
-      tio.put_line("allocated inode:" & inum'Image);
       if inum = 0 then
         return 0; -- couldn't create inode, out of inodes
       end if;
@@ -533,7 +523,6 @@ package body disk.inode is
       return inum;
     else
       -- already exists or some problem
-      tio.put_line("last component '"  & final_compt & "' of path already present, at inode" & inum'Image);
       return 0;
     end if;
   end new_inode;
@@ -546,7 +535,6 @@ package body disk.inode is
     if bnum = 0 then
       bnum := new_block(ino, position);
       if bnum = 0 then
-        tio.put_line("couldn't get new block");
         return;
       end if;
     end if;
@@ -574,7 +562,6 @@ package body disk.inode is
     data_block : data_block_t;
   begin
     if bnum = 0 then
-      tio.put_line("reading from nonexistent block");
       return (1..chunk => Character'Val(0));
     end if;
     data_block := read_data_block(bnum);
