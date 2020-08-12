@@ -6,7 +6,6 @@ FUSE_LOGFIFO=/tmp/fuse_log
 .PHONY: all clean run umount test
 
 all: analyze
-	mkdir -p dist obj
 	gprbuild -g -P $(PROJFILE) -XFUSE_LIB="$(FUSE_LIB)"
 
 fs: all
@@ -17,6 +16,7 @@ analyze:
 	@# gnats: check syntax
 	@# gnatc: check semantics
 	@# https://docs.adacore.com/gnat_ugn-docs/html/gnat_ugn/gnat_ugn/building_executable_programs_with_gnat.html
+	mkdir -p dist obj
 	gprbuild -P $(PROJFILE) -gnatc -d -f -gnata -c -XFUSE_LIB="$(FUSE_LIB)"
 
 benchmark: test/benchmark.c
